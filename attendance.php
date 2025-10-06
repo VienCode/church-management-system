@@ -76,7 +76,7 @@ $stmt->close();
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Attendance Management</title>
+    <title>Attendance Management PAGE</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
