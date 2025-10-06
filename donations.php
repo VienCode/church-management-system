@@ -52,7 +52,7 @@ if (isset($_POST['export_excel'])) {
             break;
     }
 
-    $result = $conn->query($query);
+    $result = $mysqli->query($query);
 
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="donations_'.$aggregation.'_'.date('Y-m-d').'.csv"');
@@ -75,19 +75,19 @@ $high_value_threshold = 5000;
 // Fetch donations & stats
 switch ($aggregation) {
     case 'weekly':
-        $donations_stmt = $conn->prepare("SELECT * FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE()) ORDER BY donation_date DESC");
-        $stats_stmt = $conn->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE())");
-        $chart_stmt = $conn->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE()) GROUP BY donation_date ORDER BY donation_date ASC");
+        $donations_stmt = $mysqli->prepare("SELECT * FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE()) ORDER BY donation_date DESC");
+        $stats_stmt = $mysqli->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE())");
+        $chart_stmt = $mysqli->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE WEEK(donation_date,1)=WEEK(CURDATE(),1) AND YEAR(donation_date)=YEAR(CURDATE()) GROUP BY donation_date ORDER BY donation_date ASC");
         break;
     case 'monthly':
-        $donations_stmt = $conn->prepare("SELECT * FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE()) ORDER BY donation_date DESC");
-        $stats_stmt = $conn->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE())");
-        $chart_stmt = $conn->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE()) GROUP BY donation_date ORDER BY donation_date ASC");
+        $donations_stmt = $mysqli->prepare("SELECT * FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE()) ORDER BY donation_date DESC");
+        $stats_stmt = $mysqli->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE())");
+        $chart_stmt = $mysqli->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE MONTH(donation_date)=MONTH(CURDATE()) AND YEAR(donation_date)=YEAR(CURDATE()) GROUP BY donation_date ORDER BY donation_date ASC");
         break;
     default:
-        $donations_stmt = $conn->prepare("SELECT * FROM donations WHERE donation_date=CURDATE() ORDER BY donation_date DESC");
-        $stats_stmt = $conn->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE donation_date=CURDATE()");
-        $chart_stmt = $conn->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE donation_date=CURDATE() GROUP BY donation_date ORDER BY donation_date ASC");
+        $donations_stmt = $mysqli->prepare("SELECT * FROM donations WHERE donation_date=CURDATE() ORDER BY donation_date DESC");
+        $stats_stmt = $mysqli->prepare("SELECT COUNT(*) as donation_count, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM donations WHERE donation_date=CURDATE()");
+        $chart_stmt = $mysqli->prepare("SELECT donation_date, SUM(amount) as total FROM donations WHERE donation_date=CURDATE() GROUP BY donation_date ORDER BY donation_date ASC");
         break;
 }
 
