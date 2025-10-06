@@ -1,14 +1,8 @@
 <?php
+$mysqli = new mysqli("localhost", "root", "", "your_database_name");
 
-$host = "localhost";
-$dbname = "ucf_database";
-$username = "root";
-$password = "";
-
-$mysqli = new mysqli($host, $username, $password, $dbname);
-
-if ($mysqli->connect_errno) {
-    die("Connection error: " . $mysqli->connect_error);
+if ($mysqli->connect_error) {
+    die("Connection failed: " . $mysqli->connect_error);
 }
 
 return $mysqli;

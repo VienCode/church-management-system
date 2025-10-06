@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
             $arrival_time = $data['arrival_time'] ?? null;
 
             if ($status) {
-                $stmt = $conn->prepare("
+                $stmt = $mysqli->prepare("
                     INSERT INTO attendance (member_id, attendance_date, status, arrival_time)
                     VALUES (?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE status=VALUES(status), arrival_time=VALUES(arrival_time)
@@ -53,7 +53,7 @@ $sql = "
       ON m.member_id = a.member_id AND a.attendance_date = ?
     ORDER BY m.full_name
 ";
-$stmt = $conn->prepare($sql);
+$stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
 $stmt->execute();
 $members_result = $stmt->get_result();
@@ -252,7 +252,7 @@ $stmt->close();
 
                     $query .= " ORDER BY a.attendance_date DESC, m.full_name ASC";
 
-                    $stmt = $conn->prepare($query);
+                    $stmt = $mysqli->prepare($query);
                     if (!empty($params)) {
                         $stmt->bind_param($types, ...$params);
                     }
