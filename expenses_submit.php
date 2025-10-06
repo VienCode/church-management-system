@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
 <html>
 <head>
     <title>Submit Expense</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
 <div class="main-layout">

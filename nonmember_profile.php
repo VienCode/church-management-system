@@ -35,7 +35,7 @@ $attendance_result = $attendance->get_result();
 <head>
     <meta charset="UTF-8">
     <title>Non-Member Profile | Unity Christian Fellowship</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
     <div class="main-layout">

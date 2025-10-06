@@ -110,7 +110,7 @@ while ($row = $chart_data->fetch_assoc()) {
 <html>
 <head>
     <title>Church Donations</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
 <div class="main-layout">

@@ -9,7 +9,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
 <html>
 <head>
     <title>Expenses History</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
 <div class="main-layout">

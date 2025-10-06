@@ -217,7 +217,7 @@ $posts_result = $posts_query->get_result();
 <html>
 <head>
     <title>Church Updates</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
 <div class="main-layout">
