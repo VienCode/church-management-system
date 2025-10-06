@@ -196,7 +196,7 @@ $posts_per_page = 5;
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $posts_per_page;
 
-$count_query = $conn->prepare("SELECT COUNT(*) as total FROM posts");
+$count_query = $mysqli->prepare("SELECT COUNT(*) as total FROM posts");
 $count_query->execute();
 $total_posts = $count_query->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_posts / $posts_per_page);
