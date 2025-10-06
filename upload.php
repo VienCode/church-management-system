@@ -201,7 +201,7 @@ $count_query->execute();
 $total_posts = $count_query->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_posts / $posts_per_page);
 
-$posts_query = $conn->prepare("
+$posts_query = $mysqli->prepare("
     SELECT id, title, content, image, created_at 
     FROM posts 
     ORDER BY created_at DESC 
