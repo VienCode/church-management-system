@@ -9,7 +9,7 @@ if ($_SESSION['role'] !== 'Member') {
 
 $user_id = $_SESSION['user_id'];
 
-$attendance = $conn->query("SELECT a.date, a.status, a.time 
+$attendance = $mysqli->query("SELECT a.date, a.status, a.time 
     FROM attendance a 
     WHERE a.member_id = $user_id 
     ORDER BY a.date DESC");

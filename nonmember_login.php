@@ -1,5 +1,5 @@
 <?php
-
+$mysqli = include 'database.php';
 session_start();
 
 $is_invalid = false;

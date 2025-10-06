@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_donation'])) {
     $donation_date = $_POST['donation_date'];
     $purpose = $_POST['purpose'];
 
-    $stmt = $conn->prepare("INSERT INTO donations (amount, donation_date, purpose) VALUES (?, ?, ?)");
+    $stmt = $mysqli->prepare("INSERT INTO donations (amount, donation_date, purpose) VALUES (?, ?, ?)");
     $stmt->bind_param("dss", $amount, $donation_date, $purpose);
     $stmt->execute();
     $success = "Donation successfully recorded!";
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_donation'])) {
     $donation_date = $_POST['donation_date'];
     $purpose = $_POST['purpose'];
 
-    $stmt = $conn->prepare("UPDATE donations SET amount=?, donation_date=?, purpose=? WHERE id=?");
+    $stmt = $mysqli->prepare("UPDATE donations SET amount=?, donation_date=?, purpose=? WHERE id=?");
     $stmt->bind_param("dssi", $amount, $donation_date, $purpose, $id);
     $stmt->execute();
     $success = "Donation updated successfully!";

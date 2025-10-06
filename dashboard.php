@@ -9,7 +9,7 @@ $attendanceSummary = [
     'absent' => 0
 ];
 $attendanceQuery = "SELECT status, COUNT(*) as count FROM attendance GROUP BY status";
-$result = $conn->query($attendanceQuery);
+$result = $mysqli->query($attendanceQuery);
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $attendanceSummary['total'] += $row['count'];
@@ -33,7 +33,7 @@ $attendanceTrendQuery = "
     LIMIT 7
 ";
 
-$result = $conn->query($attendanceTrendQuery);
+$result = $mysqli->query($attendanceTrendQuery);
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $attendanceTrend[] = $row;
@@ -47,7 +47,7 @@ $donationsSummary = [
     'donation_count' => 0
 ];
 $donationsQuery = "SELECT COUNT(*) as total, SUM(amount) as total_amount FROM donations";
-$donResult = $conn->query($donationsQuery);
+$donResult = $mysqli->query($donationsQuery);
 if ($donResult && $row = $donResult->fetch_assoc()) {
     $donationsSummary['total_amount'] = $row['total_amount'] ?? 0;
     $donationsSummary['donation_count'] = $row['total'];
@@ -62,7 +62,7 @@ $donTrendQuery = "
     ORDER BY month DESC
     LIMIT 6
 ";
-$dResult = $conn->query($donTrendQuery);
+$dResult = $mysqli->query($donTrendQuery);
 if ($dResult) {
     while ($row = $dResult->fetch_assoc()) {
         $donationTrend[] = $row;
@@ -75,7 +75,7 @@ $uploadsSummary = [
     'file_count' => 0
 ];
 $uploadsQuery = "SELECT COUNT(*) as total FROM posts";
-$upResult = $conn->query($uploadsQuery);
+$upResult = $mysqli->query($uploadsQuery);
 if ($upResult && $row = $upResult->fetch_assoc()) {
     $uploadsSummary['file_count'] = $row['total'];
 }

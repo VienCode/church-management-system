@@ -3,7 +3,7 @@ $mysqli = include 'database.php';
 session_start();
 
 // Fetch approved & declined
-$result = $conn->query("SELECT * FROM expenses WHERE status IN ('Approved','Declined') ORDER BY date_submitted DESC");
+$result = $mysqli->query("SELECT * FROM expenses WHERE status IN ('Approved','Declined') ORDER BY date_submitted DESC");
 ?>
 <!DOCTYPE html>
 <html>

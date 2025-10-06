@@ -17,7 +17,7 @@ $query = "
     ORDER BY m.full_name ASC
 ";
 
-$stmt = $conn->prepare($query);
+$stmt = $mysqli->prepare($query);
 $stmt->bind_param("s", $current_date);
 $stmt->execute();
 $result = $stmt->get_result();

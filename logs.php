@@ -15,7 +15,7 @@ $query = "
     ORDER BY l.created_at DESC
     LIMIT 100
 ";
-$result = $conn->query($query);
+$result = $mysqli->query($query);
 ?>
 
 <!DOCTYPE html>

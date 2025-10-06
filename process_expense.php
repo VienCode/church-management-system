@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['expense_id'], $_POST[
         exit();
     }
 
-    $stmt = $conn->prepare("UPDATE expenses SET status = ?, reviewed_by = ?, date_reviewed = NOW() WHERE id = ?");
+    $stmt = $mysqli->prepare("UPDATE expenses SET status = ?, reviewed_by = ?, date_reviewed = NOW() WHERE id = ?");
     $stmt->bind_param("sii", $action, $_SESSION['user_id'], $expenseId);
 
     if ($stmt->execute()) {

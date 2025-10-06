@@ -3,7 +3,7 @@ $mysqli = include 'database.php';
 session_start();
 
 // Fetch pending expenses
-$result = $conn->query("SELECT * FROM expenses WHERE status = 'Pending' ORDER BY date_submitted DESC");
+$result = $mysqli->query("SELECT * FROM expenses WHERE status = 'Pending' ORDER BY date_submitted DESC");
 ?>
 <!DOCTYPE html>
 <html>

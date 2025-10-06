@@ -9,11 +9,11 @@ if ($_SESSION['role'] !== 'Leader') {
 $leader_id = $_SESSION['user_id'];
 
 // Get leader’s cell group
-$group = $conn->query("SELECT * FROM cell_groups WHERE leader_id = $leader_id")->fetch_assoc();
+$group = $mysqli->query("SELECT * FROM cell_groups WHERE leader_id = $leader_id")->fetch_assoc();
 $group_id = $group['id'];
 
 // Get group members
-$members = $conn->query("SELECT u.id, u.name 
+$members = $mysqli->query("SELECT u.id, u.name 
     FROM users u 
     JOIN cell_group_members cgm ON u.id = cgm.member_id
     WHERE cgm.group_id = $group_id");

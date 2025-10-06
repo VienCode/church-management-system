@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_post'])) {
         }
     }   
 
-    $stmt = $conn->prepare("INSERT INTO posts (title, content, image, created_at) VALUES (?, ?, ?, NOW())");
+    $stmt = $mysqli->prepare("INSERT INTO posts (title, content, image, created_at) VALUES (?, ?, ?, NOW())");
     
     // DEBUG: Check if prepare failed (e.g., table or column names are wrong)
     if ($stmt === false) {
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_post'])) {
     $content = trim($_POST['content']);
 
     // Check current image path
-    $stmt = $conn->prepare("SELECT image FROM posts WHERE id = ?");
+    $stmt = $mysqli->prepare("SELECT image FROM posts WHERE id = ?");
     if ($stmt === false) handle_post_error(null, "SQL prepare failed for SELECT (edit)");
     $stmt->bind_param("i", $post_id);
     if (!$stmt->execute()) handle_post_error($stmt, "SQL execute failed for SELECT (edit)");
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_post'])) {
         }
     }
 
-    $stmt = $conn->prepare("UPDATE posts SET title = ?, content = ?, image = ? WHERE id = ?");
+    $stmt = $mysqli->prepare("UPDATE posts SET title = ?, content = ?, image = ? WHERE id = ?");
     if ($stmt === false) handle_post_error(null, "SQL prepare failed for UPDATE");
     
     $stmt->bind_param("sssi", $title, $content, $image, $post_id); 
