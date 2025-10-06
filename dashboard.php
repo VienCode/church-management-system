@@ -86,10 +86,14 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
     <meta charset="UTF-8">
     <title>Church Dashboard</title>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <link rel="stylesheet" href="styles_system.css">
 =======
     <link rel="stylesheet" href="style_system.css">
 >>>>>>> 69a92ef578266d09cc02e069f090cc3bbee69b7e
+=======
+    <link rel="stylesheet" href="styles_system.css">
+>>>>>>> b32b50f4c8cddb42628666e39c383bd0311c1761
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
