@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
     $amount = floatval($_POST['amount']);
     $date_submitted = date('Y-m-d H:i:s');
 
-    $stmt = $mysqli->prepare("INSERT INTO expenses (title, reason, amount, status, date_submitted) VALUES (?, ?, ?, 'Pending', ?)");
+    $stmt = $mysqli->prepare("INSERT INTO expenses (title, description, amount, submitted_by, status) VALUES (?, ?, ?, ?, 'Pending')");
     $stmt->bind_param("ssds", $title, $reason, $amount, $date_submitted);
 
     if ($stmt->execute()) {
