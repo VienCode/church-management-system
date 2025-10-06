@@ -46,13 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
 
 // Fetch members with their attendance for the selected date
 $sql = "
-    SELECT m.member_id AS id, m.full_name AS name,
-           a.status, a.arrival_time
+    SELECT 
+        m.id AS id, 
+        CONCAT(m.firstname, ' ', m.lastname, ' ', COALESCE(m.suffix, '')) AS name,
+        a.status, 
+        a.arrival_time
     FROM members m
     LEFT JOIN attendance a 
-      ON m.member_id = a.member_id AND a.attendance_date = ?
-    ORDER BY m.full_name
+      ON m.id = a.member_id AND a.attendance_date = ?
+    ORDER BY m.firstname, m.lastname
 ";
+
 $stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
 $stmt->execute();
@@ -77,7 +81,7 @@ $stmt->close();
 <html>
 <head>
     <title>Attendance Management PAGE</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style_system.css">
 </head>
 <body>
     <div class="main-layout">
