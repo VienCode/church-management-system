@@ -82,7 +82,7 @@ $stmt->close();
 <html>
 <head>
     <title>Attendance Management</title>
-    <link rel="stylesheet" href="style_system.css">
+    <link rel="stylesheet" href="styles_system.css">
 </head>
 <body>
     <div class="main-layout">
