@@ -20,7 +20,7 @@
         </div>
 
         <div class="welcome_text">
-            <h1> WELCOME TO THE UNITY CHRISTIAN FELLOWSHIP FAMILY! </h1>
+            <h1> WELCOME TO UNITY CHRISTIAN FELLOWSHIP FAMILY! </h1>
         </div>
 
         <div class="button_container">
