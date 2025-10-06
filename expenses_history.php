@@ -2,7 +2,7 @@
 $mysqli = include 'database.php';
 session_start();
 
-// Fetch approved & declined
+// Fetch all approved or declined expenses (latest first)
 $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
 ?>
 <!DOCTYPE html>
@@ -53,7 +53,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
                 <thead>
                     <tr>
                         <th>Title</th>
-                        <th>Reason</th>
+                        <th>Description</th>
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Date Submitted</th>
@@ -61,22 +61,32 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
                     </tr>
                 </thead>
                 <tbody>
-                <?php while ($row = $result->fetch_assoc()): ?>
+                <?php
+                if ($results && $results->num_rows > 0):
+                    while ($row = $results->fetch_assoc()):
+                ?>
                     <tr>
                         <td><?php echo htmlspecialchars($row['title']); ?></td>
-                        <td><?php echo htmlspecialchars($row['reason']); ?></td>
+                        <td><?php echo htmlspecialchars($row['description']); ?></td>
                         <td>₱<?php echo number_format($row['amount'], 2); ?></td>
                         <td>
-                            <?php if ($row['status'] === 'Approved'): ?>
+                            <?php if (strtolower($row['status']) === 'approved'): ?>
                                 <span class="status-badge present">Approved</span>
-                            <?php else: ?>
+                            <?php elseif (strtolower($row['status']) === 'declined'): ?>
                                 <span class="status-badge absent">Declined</span>
+                            <?php else: ?>
+                                <span class="status-badge pending">Pending</span>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo $row['date_submitted']; ?></td>
-                        <td><?php echo $row['date_reviewed'] ?? '—'; ?></td>
+                        <td><?php echo htmlspecialchars($row['created_at']); ?></td>
+                        <td><?php echo htmlspecialchars($row['updated_at'] ?? '—'); ?></td>
                     </tr>
-                <?php endwhile; ?>
+                <?php
+                    endwhile;
+                else:
+                ?>
+                    <tr><td colspan="6">No expense history found.</td></tr>
+                <?php endif; ?>
                 </tbody>
             </table>
         </div>
