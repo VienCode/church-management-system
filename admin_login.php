@@ -20,9 +20,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         session_regenerate_id(true);
 
         $_SESSION["user_id"] = $user["admin_id"];
-        $_SESSION["role"] = "admin"; // paltan mo nalang yung kasunod ng "Location: " Jav kung san yung landing page ng admin hehe :D
+        $_SESSION["role"] = "Admin"; //  Added role for role-based access system
 
-        header("Location: dashboard.php"); 
+        header("Location: dashboard.php"); // Admin landing page
         exit;
     }
 

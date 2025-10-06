@@ -16,18 +16,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $user = $result->fetch_assoc();
 
     if ($user && password_verify($_POST["pwd"], $user["pwd_hash"])) {
-
         session_regenerate_id(true);
-        $_SESSION["user_id"] = $user["id"];
-        $_SESSION["role"] = "non_member";
-
-        header("Location: nonmember_profile.php");
+        $_SESSION["user_id"] = $user["non_member_id"]; 
+        $_SESSION["role"] = "Non-member"; 
+        header("Location: nonmember_profile.php"); // landing page for non-members
         exit;
     }
-
     $is_invalid = true;
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -44,28 +40,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <body class="login_body">
     
     <div class="topnav">
-        <img class= "ucf-topnav" src="images/ucf.png" alt="UCF Logo Top Nav">
+        <img class="ucf-topnav" src="images/ucf.png" alt="UCF Logo Top Nav">
         <a href="login.php" class="active">Back to Login</a>      
     </div>
 
     <div class="container-login">
         <div class="login">
 
-            <img class= "ucf-logo" src="images/ucf.png" alt="Unity Christian Fellowship Logo">
+            <img class="ucf-logo" src="images/ucf.png" alt="Unity Christian Fellowship Logo">
             
             <h3>Log in to your account (Non-Member)</h3>
 
             <?php if ($is_invalid): ?>
-                <em> Invalid Login </em>
+                <em>Invalid Login</em>
             <?php endif; ?> 
 
             <form method="post">
                 <input required class="customInput" type="text" name="email" placeholder="Email" value="<?= htmlspecialchars($_POST["email"] ?? "") ?>">
-                <br> <br>
+                <br><br>
                 <input required class="customInput" type="password" name="pwd" placeholder="Password">
-                <br> <br>
+                <br><br>
                 <button class="customButton">Login</button>
-                <br> <br>
+                <br><br>
                 <a href="register.php">Don't have an account? Click here to register!</a>
             </form>
         </div>
