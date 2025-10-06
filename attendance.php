@@ -50,12 +50,13 @@ $sql = "
         m.id AS id, 
         CONCAT(m.firstname, ' ', m.lastname, ' ', COALESCE(m.suffix, '')) AS name,
         a.status, 
-        a.arrival_time
+        a.time_in
     FROM members m
     LEFT JOIN attendance a 
-      ON m.id = a.member_id AND a.attendance_date = ?
+      ON m.id = a.user_id AND a.attendance_date = ?
     ORDER BY m.firstname, m.lastname
 ";
+
 
 $stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
@@ -80,7 +81,7 @@ $stmt->close();
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Attendance Management PAGE</title>
+    <title>Attendance Management</title>
     <link rel="stylesheet" href="style_system.css">
 </head>
 <body>
