@@ -4,12 +4,6 @@ include 'auth_check.php';
 restrict_to_roles([1]); // Admins only
 session_start();
 
-// Ensure only admins can access
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: unauthorized.php");
-    exit();
-}
-
 // Handle success messages
 $successMessage = '';
 if (isset($_GET['msg'])) {
