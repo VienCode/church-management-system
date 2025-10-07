@@ -2,8 +2,6 @@
 $mysqli = include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([4]);
-session_start();
-
 
 // Ensure user is logged in
 if (!isset($_SESSION['user_id'])) {

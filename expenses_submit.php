@@ -2,7 +2,6 @@
 $mysqli = include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([1, 2, 5, 7]);
-session_start();
 
 // Handle submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {

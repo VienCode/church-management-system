@@ -9,8 +9,6 @@ error_reporting(E_ALL);
 $mysqli = include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([1, 6]);
-session_start();
-
 
 // CRITICAL FIX 2: Check for successful database connection immediately
 if ($mysqli->connect_error) {

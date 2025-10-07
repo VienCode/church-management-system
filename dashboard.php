@@ -3,9 +3,6 @@ $mysqli = include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([1, 2, 3, 4, 5 ,6, 7, 8]);
 
-
-session_start();
-
 // ---- Attendance Summary ----
 $attendanceSummary = [
     'total' => 0,
