@@ -63,13 +63,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php endif; ?> 
 
             <form method="post">
-                <input required class="customInput" type="text" name="email" placeholder="Email" value="<?= htmlspecialchars($_POST["email"] ?? "") ?>">
+                <input required class="customInput" type="text" name="email" placeholder="Username" value="<?= htmlspecialchars($_POST["email"] ?? "") ?>">
                 <br> <br>
                 <input required class="customInput" type="password" name="pwd" placeholder="Password">
                 <br> <br>
-                <button class="customButton">Login</button>
-                <br> <br>
-                <a href="register.php">Don't have an account? Click here to register!</a>
+                <button class="customButton" name="role" value="admin">Login as Admin</button>
+                <button class="customButton" name="role" value="accountant">Login as Accountant</button>
+                <button class="customButton" name="role" value="pastor">Login as Pastor</button>
             </form>
         </div>
     </div>

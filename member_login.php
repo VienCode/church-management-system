@@ -64,7 +64,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <br> <br>
                 <input required class="customInput" type="password" name="pwd" placeholder="Password">
                 <br> <br>
-                <button class="customButton">Login</button>
+                <button class="customButton" name="role" value="member">Login as Cell Member</button>
+                <button class="customButton" name="role" value="leader">Login as Cell Leader</button>
                 <br> <br>
                 <a href="register.php">Don't have an account? Click here to register!</a>
             </form>
