@@ -47,16 +47,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
 
 // Fetch members with their attendance for the selected date
 $sql = "
-    SELECT 
-        m.id AS id, 
-        CONCAT(m.firstname, ' ', m.lastname, ' ', COALESCE(m.suffix, '')) AS name,
-        a.status, 
-        a.time_in
-    FROM members m
-    LEFT JOIN attendance a 
-      ON m.id = a.user_id AND a.attendance_date = ?
-    ORDER BY m.firstname, m.lastname
+SELECT 
+    users.id, 
+    users.firstname, 
+    users.lastname, 
+    attendance.status, 
+    attendance.attendance_date
+FROM users
+LEFT JOIN attendance ON attendance.user_id = users.id
+WHERE users.role_id IN (2,3,5,9)
+ORDER BY users.lastname ASC
 ";
+
 
 
 $stmt = $mysqli->prepare($sql);
