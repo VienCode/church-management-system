@@ -46,20 +46,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
 }
 
 // Fetch members with their attendance for the selected date
+// Fetch members with their attendance for the selected date
 $sql = "
 SELECT 
     users.id, 
     users.firstname, 
     users.lastname, 
     attendance.status, 
-    attendance.attendance_date
+    attendance.attendance_date,
+    attendance.arrival_time
 FROM users
-LEFT JOIN attendance ON attendance.user_id = users.id
+LEFT JOIN attendance 
+    ON attendance.user_id = users.id 
+    AND attendance.attendance_date = ?
 WHERE users.role_id IN (2,3,5,9)
 ORDER BY users.lastname ASC
 ";
-
-
 
 $stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
@@ -80,6 +82,7 @@ while ($row = $members_result->fetch_assoc()) {
 $notMarked = $totalMembers - ($presentCount + $absentCount);
 
 $stmt->close();
+
 ?>
 <!DOCTYPE html>
 <html>
