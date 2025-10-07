@@ -38,6 +38,10 @@ body {
     align-items: center;
     padding: 0 20px;
     margin-bottom: 30px;
+    
+    img {
+        width: 55px;
+    }
 }
 
 .sidebar .logo-placeholder {
