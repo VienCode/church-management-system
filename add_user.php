@@ -1,7 +1,8 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1]); // Admins only
+include 'auth_check.php';
+restrict_to_roles([ROLE_ADMIN]);
 
 $firstname = $_POST['firstname'];
 $lastname = $_POST['lastname'];
