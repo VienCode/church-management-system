@@ -1,5 +1,7 @@
 <?php
 $mysqli = include 'database.php';
+include 'access_control.php';
+restrictAccess(['Non-member', 'Member']);
 session_start();
 
 
