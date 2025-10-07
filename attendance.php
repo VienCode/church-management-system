@@ -25,17 +25,17 @@ $search_date = isset($_GET['search_date']) ? htmlspecialchars($_GET['search_date
 // Attendance submission handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
     if (isset($_POST['attendance']) && is_array($_POST['attendance'])) {
-        foreach ($_POST['attendance'] as $member_id => $data) {
+        foreach ($_POST['attendance'] as $user_id => $data) {
             $status = $data['status'] ?? null;
-            $arrival_time = $data['arrival_time'] ?? null;
+            $time_in = $data['time_in'] ?? null;
 
             if ($status) {
                 $stmt = $mysqli->prepare("
-                    INSERT INTO attendance (member_id, attendance_date, status, arrival_time)
+                    INSERT INTO attendance (user_id, attendance_date, status, time_in)
                     VALUES (?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE status=VALUES(status), arrival_time=VALUES(arrival_time)
+                    ON DUPLICATE KEY UPDATE status=VALUES(status), time_in=VALUES(time_in)
                 ");
-                $stmt->bind_param("isss", $member_id, $attendance_date, $status, $arrival_time);
+                $stmt->bind_param("isss", $user_id, $attendance_date, $status, $time_in);
                 $stmt->execute();
             }
         }
@@ -46,15 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
 }
 
 // Fetch members with their attendance for the selected date
-// Fetch members with their attendance for the selected date
 $sql = "
 SELECT 
     users.id, 
-    users.firstname, 
-    users.lastname, 
+    CONCAT(users.firstname, ' ', users.lastname) AS name,
     attendance.status, 
     attendance.attendance_date,
-    attendance.arrival_time
+    attendance.time_in
 FROM users
 LEFT JOIN attendance 
     ON attendance.user_id = users.id 
@@ -82,7 +80,6 @@ while ($row = $members_result->fetch_assoc()) {
 $notMarked = $totalMembers - ($presentCount + $absentCount);
 
 $stmt->close();
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -163,7 +160,7 @@ $stmt->close();
                                 <th>#</th>
                                 <th>Member Name</th>
                                 <th>Attendance Status</th>
-                                <th>Arrival Time</th>
+                                <th>Time In</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -193,8 +190,8 @@ $stmt->close();
                                         <td>
                                             <input type="time" class="time-input" 
                                                    id="time_<?php echo $m['id']; ?>" 
-                                                   name="attendance[<?php echo $m['id']; ?>][arrival_time]" 
-                                                   value="<?php echo $m['arrival_time'] ?? ''; ?>" 
+                                                   name="attendance[<?php echo $m['id']; ?>][time_in]" 
+                                                   value="<?php echo $m['time_in'] ?? ''; ?>" 
                                                    <?php echo ($m['status'] === "Present") ? "" : "disabled"; ?>>
                                         </td>
                                     </tr>
@@ -235,22 +232,25 @@ $stmt->close();
                     <th>Member Name</th>
                     <th>Date</th>
                     <th>Status</th>
-                    <th>Arrival Time</th>
+                    <th>Time In</th>
                 </tr>
                 <?php
                 if (isset($_GET['search_submitted'])) {
                     // Build query with optional filters
                     $query = "
-                        SELECT m.full_name, a.attendance_date, a.status, a.arrival_time
-                        FROM members m
-                        LEFT JOIN attendance a ON m.member_id = a.member_id
+                        SELECT CONCAT(u.firstname, ' ', u.lastname) AS full_name, 
+                               a.attendance_date, 
+                               a.status, 
+                               a.time_in
+                        FROM users u
+                        LEFT JOIN attendance a ON u.id = a.user_id
                         WHERE 1=1
                     ";
                     $params = [];
                     $types = "";
 
                     if (!empty($search_name)) {
-                        $query .= " AND m.full_name LIKE ?";
+                        $query .= " AND CONCAT(u.firstname, ' ', u.lastname) LIKE ?";
                         $params[] = "%" . $search_name . "%";
                         $types .= "s";
                     }
@@ -261,7 +261,7 @@ $stmt->close();
                         $types .= "s";
                     }
 
-                    $query .= " ORDER BY a.attendance_date DESC, m.full_name ASC";
+                    $query .= " ORDER BY a.attendance_date DESC, u.lastname ASC";
 
                     $stmt = $mysqli->prepare($query);
                     if (!empty($params)) {
@@ -276,7 +276,7 @@ $stmt->close();
                                     <td>" . htmlspecialchars($row['full_name']) . "</td>
                                     <td>" . ($row['attendance_date'] ? htmlspecialchars($row['attendance_date']) : "Not Recorded") . "</td>
                                     <td>" . ($row['status'] ?? "Not Marked") . "</td>
-                                    <td>" . ($row['arrival_time'] ?? "N/A") . "</td>
+                                    <td>" . ($row['time_in'] ?? "N/A") . "</td>
                                   </tr>";
                         }
                     } else {
