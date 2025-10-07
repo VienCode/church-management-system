@@ -6,14 +6,14 @@ require __DIR__ . '/database.php';
 
 // --- Admin Account Details ---
 $firstname     = 'UCF';
-$lastname      = 'Attendance';
+$lastname      = 'Editor';
 $suffix        = '';
 $contact       = '0931000000';
 $age           = 21;
-$user_address  = 'Attendance Address';
-$email         = 'Attendance@ucf.com';
-$password      = 'Attendance@1234';  // You can change this
-$role_id       = 5;             //
+$user_address  = 'Editor Address';
+$email         = 'Editor@ucf.com';
+$password      = 'Editor@1234';  // You can change this
+$role_id       = 6;             //
 
 // --- Hash the password ---
 $pwd_hash = password_hash($password, PASSWORD_DEFAULT);
