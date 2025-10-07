@@ -1,6 +1,6 @@
 <?php
 session_start();
-$mysqli = require __DIR__ . "/db.php";
+$mysqli = require __DIR__ . "/database.php";
 
 $is_invalid = false;
 
