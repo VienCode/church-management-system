@@ -1,3 +1,21 @@
+<?php
+session_start();
+if (isset($_SESSION['register_errors'])) {
+    echo '<div style="color: #ff6666; font-weight: bold; margin-bottom: 15px;">';
+    foreach ($_SESSION['register_errors'] as $error) {
+        echo "• " . htmlspecialchars($error) . "<br>";
+    }
+    echo '</div>';
+    unset($_SESSION['register_errors']);
+}
+
+if (isset($_SESSION['register_success'])) {
+    echo '<div style="color: #00cc66; font-weight: bold; margin-bottom: 15px;">' 
+        . htmlspecialchars($_SESSION['register_success']) . '</div>';
+    unset($_SESSION['register_success']);
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
