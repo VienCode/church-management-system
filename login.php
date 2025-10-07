@@ -19,8 +19,8 @@
 
     <div class="container-login">
         <div class="login">
-            <a href="nonmember_login.php"><button class="customButton"> Login as Non-Member</button></a> <br> <br>
-            <a href="member_login.php"><button class="customButton"> Login as Cell Member</button></a> <br> <br>
+            <a href="nonmember_login.php"><button class="customButton"> Login as Non-Member</button></a>
+            <a href="member_login.php"><button class="customButton"> Login as Member</button></a> <br><br>
             <a href="admin_login.php"><button class="customButton"> Login as Admin</button></a>
         </div>
     </div>
