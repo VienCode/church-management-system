@@ -106,7 +106,6 @@ $result = $stmt->get_result();
         <div class="content-header">
             <div class="header-left">
                 <h1 class="page-title">👤 Manage Users</h1>
-                <p class="title-subtitle">Add, edit, delete, or reset user accounts</p>
             </div>
         </div>
 
