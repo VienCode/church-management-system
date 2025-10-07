@@ -44,7 +44,7 @@ if (!empty($search)) {
 }
 
 // Count total users
-$countSql = "SELECT COUNT(*) AS total FROM users JOIN roles ON users.role_id = roles.id WHERE $where";
+$countSql = "SELECT COUNT(*) AS total FROM users JOIN roles ON users.role_id = roles.role_id WHERE $where";
 $countStmt = $mysqli->prepare($countSql);
 if ($types) $countStmt->bind_param($types, ...$params);
 $countStmt->execute();
@@ -54,10 +54,11 @@ $totalPages = ceil($totalRows / $limit);
 // Fetch paginated users
 $sql = "SELECT users.*, roles.role_name 
         FROM users 
-        JOIN roles ON users.role_id = roles.id 
+        JOIN roles ON users.role_id = roles.role_id 
         WHERE $where 
         ORDER BY users.id DESC 
         LIMIT $limit OFFSET $offset";
+
 $stmt = $mysqli->prepare($sql);
 if ($types) $stmt->bind_param($types, ...$params);
 $stmt->execute();
