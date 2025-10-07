@@ -1,7 +1,7 @@
 <?php
 $mysqli = include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1, 7]); // Admin & Accountant    
+restrict_to_roles([ ROLE_ADMIN, ROLE_ACCOUNTANT]);
 
 // Handle new donation submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_donation'])) {

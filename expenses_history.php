@@ -1,7 +1,7 @@
 <?php
 $mysqli = include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1, 2, 5, 7]);
+restrict_to_roles([ROLE_ADMIN, ROLE_ACCOUNTANT]);
 
 // Fetch all approved or declined expenses (latest first)
 $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
