@@ -12,9 +12,9 @@
 <body class="register_body">
 
     <div class="topnav">
-        <img class= "ucf-topnav" src="images/ucf.png" alt="UCF Logo Top Nav">
+        <img class="ucf-topnav" src="images/ucf.png" alt="UCF Logo Top Nav">
         <a href="login.php">Back to Login</a>
-        <a href= "pre-index.php" class="active">Home</a>          
+        <a href="pre-index.php" class="active">Home</a>          
     </div>
 
     <div class="container-register">
@@ -22,69 +22,60 @@
 
             <h3>Register Form</h3>
 
-                <form action="process-signup.php" method="post" name="register" id="register" novalidate>
-                    <input required class="customInput" type="text" name="firstname" placeholder="First Name*"> 
-                    <input required class="customInput" type="text" name="middlename" placeholder="Middle Name (Optional)"><br><br>
-                    <input required class="customInput" type="text" name="lastname" placeholder="Last Name*">
-                    <select class="customSelect" name="suffix" id="suffix">
-                        <option value=""disabled selected hidden>Suffix</option>
-                        <option value="none">None</option>
-                        <option value="Sr.">Sr.</option>
-                        <option value="Jr.">Jr.</option>
-                        <option value="II">II</option>
-                        <option value="III">III</option>
-                        </select>
-                    </select> <br> <br>
+            <form action="process-signup.php" method="post" name="register" id="register" novalidate>
+                <input required class="customInput" type="text" name="firstname" placeholder="First Name*"> 
+                <input class="customInput" type="text" name="middlename" placeholder="Middle Name (Optional)"><br><br>
+                <input required class="customInput" type="text" name="lastname" placeholder="Last Name*">
 
-                    <input required class="customInput" type="number" name="contact" placeholder="Contact Number*"> 
-                    <input required class="customInput" type="number" name="age" placeholder="Age*" min="0"> <br> <br>
-                    <input required class="customAddressInput" type="text" name="user_address" placeholder="Address*">
+                <select class="customSelect" name="suffix" id="suffix">
+                    <option value="" disabled selected hidden>Suffix</option>
+                    <option value="None">None</option>
+                    <option value="Sr.">Sr.</option>
+                    <option value="Jr.">Jr.</option>
+                    <option value="II">II</option>
+                    <option value="III">III</option>
+                </select><br><br>
 
-                    Cell Leader: 
-                    <select class="customLeaderInput" name="cell_leader" id="cell_leader">
-                        <option value="" disabled selected hidden>Cell Leader</option>
-                        <option value="None">None</option>
-                        <option value="JL Taberdo">JL Taberdo</option>
-                        <option value="JC Casidor">JC Casidor</option>
-                        <option value="Jav Agustin">Jav Agustin</option>
-                        <option value="Dave Dapitillo">Dave Dapitillo</option>
-                        </select>
-                    </select> <br> <br>
+                <input required class="customInput" type="number" name="contact" placeholder="Contact Number*"> 
+                <input required class="customInput" type="number" name="age" placeholder="Age*" min="0"><br><br>
+                <input required class="customAddressInput" type="text" name="user_address" placeholder="Address*">
 
-                    <h5>*Input the desired information to use</h5>
-                    <input required class="customInput" type="text" name="email" placeholder="Email*                                                    @gmail.com">
-                    <br>
-                    <h5>Password must be atleast 8 characters long, with atleast 1 letter or number.</h5>
-                    <input required class="customInput" type="password" name="pwd" placeholder="Password*"> 
-                    <input required class="customInput" type="password" name="confirm_pwd" placeholder="Confirm Password">
-                    <br><br>
-                    <button type="submit" name="submit" class="customButton"> Submit </button>
+                <label for="cell_leader">Cell Leader:</label>
+                <select class="customLeaderInput" name="cell_leader" id="cell_leader">
+                    <option value="" disabled selected hidden>Cell Leader</option>
+                    <option value="None">None</option>
+                    <option value="JL Taberdo">JL Taberdo</option>
+                    <option value="JC Casidor">JC Casidor</option>
+                    <option value="Jav Agustin">Jav Agustin</option>
+                    <option value="Dave Dapitillo">Dave Dapitillo</option>
+                </select><br><br>
 
-                <script>/* Grayed out placeholder */
-                    document.addEventListener("DOMContentLoaded", function () {
-                        function handleSelect(selectElement) {
-                            if (!selectElement) return; 
+                <h5>*Input the desired information to use</h5>
+                <input required class="customInput" type="email" name="email" placeholder="Email*">
+                <br>
+                <h5>Password must be at least 8 characters long, with at least 1 letter or number.</h5>
+                <input required class="customInput" type="password" name="pwd" placeholder="Password*"> 
+                <input required class="customInput" type="password" name="confirm_pwd" placeholder="Confirm Password">
+                <br><br>
 
-                            if (!selectElement.value) {
-                                selectElement.style.color = "gray";
-                            } else {
-                                selectElement.style.color = "black";
-                            }
-
-                            selectElement.addEventListener("change", function () {
-                                if (!this.value) {
-                                    this.style.color = "gray";
-                                } else {
-                                    this.style.color = "black";
-                                }
-                            });
-                        }
-                        handleSelect(document.getElementById("suffix"));
-                        handleSelect(document.getElementById("cell_leader"));
-                    });
-                    </script>
+                <button type="submit" name="submit" class="customButton">Submit</button>
             </form>
         </div>
     </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function handleSelect(selectElement) {
+            if (!selectElement) return; 
+            if (!selectElement.value) selectElement.style.color = "gray";
+            selectElement.addEventListener("change", function () {
+                this.style.color = this.value ? "black" : "gray";
+            });
+        }
+        handleSelect(document.getElementById("suffix"));
+        handleSelect(document.getElementById("cell_leader"));
+    });
+    </script>
+
 </body>
 </html>

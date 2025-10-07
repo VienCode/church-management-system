@@ -1,5 +1,5 @@
 <?php
-//FIELD VALIDATION
+// FIELD VALIDATION
 if (
     empty($_POST["firstname"]) ||
     empty($_POST["lastname"]) ||
@@ -71,8 +71,8 @@ $pwd_hash = password_hash($_POST["pwd"], PASSWORD_DEFAULT);
 // DATABASE CONNECTION
 $mysqli = require __DIR__ . "/database.php";
 
-// CHECK FOR DUPLICATE EMAIL
-$check_sql = "SELECT email FROM non_members WHERE email = ?";
+// CHECK FOR DUPLICATE EMAIL IN users TABLE
+$check_sql = "SELECT email FROM users WHERE email = ?";
 $check_stmt = $mysqli->prepare($check_sql);
 $check_stmt->bind_param("s", $_POST["email"]);
 $check_stmt->execute();
@@ -86,17 +86,18 @@ if ($result->num_rows > 0) {
     exit;
 }
 
-// INSERT INTO non_members TABLE
-$sql = "INSERT INTO non_members 
-        (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+// INSERT INTO users TABLE
+$sql = "INSERT INTO users 
+        (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, cell_leader, created_at, role_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 8)"; 
+// role_id = 8 means “Non-Member” by default
 
 $stmt = $mysqli->stmt_init();
 if (!$stmt->prepare($sql)) {
     die('SQL error: ' . $mysqli->error);
 }
 
-$stmt->bind_param("sssissss",
+$stmt->bind_param("sssisssss",
     $_POST["firstname"],
     $_POST["lastname"],
     $_POST["suffix"],
@@ -104,7 +105,8 @@ $stmt->bind_param("sssissss",
     $_POST["age"],
     $_POST["user_address"],
     $_POST["email"],
-    $pwd_hash
+    $pwd_hash,
+    $_POST["cell_leader"]
 );
 
 if ($stmt->execute()) {
