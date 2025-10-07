@@ -1,29 +1,34 @@
 <?php
 session_start();
 
-// If not logged in at all
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role_id'])) {
+if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
+// Role constants for readability
+define('ROLE_ADMIN', 1);
+define('ROLE_LEADER', 2);
+define('ROLE_MEMBER', 3);
+define('ROLE_NON_MEMBER', 4);
+define('ROLE_ATTENDANCE_MARKER', 5);
+define('ROLE_EDITOR', 6);
+define('ROLE_ACCOUNTANT', 7);
+define('ROLE_PASTOR', 8);
+
 /**
- * Restricts access to only specific roles.
- * Admins (role_id = 1) always have full access.
- * @param array $allowed_roles An array of role_id values that can access the page
+ * Restrict specific pages to roles only
  */
-function restrict_to_roles(array $allowed_roles) {
-    $role_id = $_SESSION['role_id'];
-
-    // Admins bypass restrictions
-    if ($role_id == 1) {
-        return;
-    }
-
-    // If the current role is not in the allowed list
-    if (!in_array($role_id, $allowed_roles)) {
+function restrict_to_roles($allowed_roles = []) {
+    if (!in_array($_SESSION['role_id'], $allowed_roles) && $_SESSION['role_id'] != ROLE_ADMIN) {
         header("Location: unauthorized.php");
         exit();
     }
 }
-?>
+
+/**
+ * Helper for showing/hiding menu items
+ */
+function can_access($allowed_roles = []) {
+    return in_array($_SESSION['role_id'], $allowed_roles) || $_SESSION['role_id'] == ROLE_ADMIN;
+}
