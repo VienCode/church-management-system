@@ -1,7 +1,7 @@
 <?php
-$mysqli = require __DIR__ . '/../db.php'; // adjust path as needed
+$mysqli = require __DIR__ . '/../database.php'; 
 
-// Step 1: Fetch all non-members who reached 10 or more attendances
+// Fetch all non-members who reached 10 or more attendances
 $query = "SELECT * FROM non_members WHERE attendances_count >= 10";
 $result = $mysqli->query($query);
 
@@ -15,7 +15,7 @@ $logs = [];
 if ($result->num_rows > 0) {
     while ($nonMember = $result->fetch_assoc()) {
 
-        // Step 2: Insert into users table
+        // Insert into users table
         $stmt = $mysqli->prepare("
             INSERT INTO users (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, created_at, role_id, role)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 3, 'Member')
@@ -35,7 +35,7 @@ if ($result->num_rows > 0) {
         if ($stmt->execute()) {
             $newUserId = $stmt->insert_id;
 
-            // Step 3: Log role change
+            // Log role change
             $logStmt = $mysqli->prepare("
                 INSERT INTO role_logs (user_id, old_role, new_role, changed_by)
                 VALUES (?, 'Non-member', 'Member', NULL)
@@ -43,7 +43,7 @@ if ($result->num_rows > 0) {
             $logStmt->bind_param("i", $newUserId);
             $logStmt->execute();
 
-            // Step 4: Delete from non_members
+            // Delete from non_members
             $deleteStmt = $mysqli->prepare("DELETE FROM non_members WHERE id = ?");
             $deleteStmt->bind_param("i", $nonMember['id']);
             $deleteStmt->execute();
@@ -56,7 +56,7 @@ if ($result->num_rows > 0) {
 
 $mysqli->close();
 
-// Step 5: Redirect back with status
+// Redirect back with status
 session_start();
 $_SESSION['promotion_result'] = $promoted > 0
     ? "✅ Successfully promoted $promoted non-member(s):<br>" . implode('<br>', $logs)

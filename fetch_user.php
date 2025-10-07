@@ -1,5 +1,5 @@
 <?php
-include 'db.php';
+include 'database.php';
 
 $id = $_GET['id'];
 $stmt = $mysqli->prepare("SELECT * FROM users WHERE id = ?");
