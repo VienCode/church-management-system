@@ -2,6 +2,8 @@
 // CRITICAL FIX 1: Enable error reporting at the very top for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
+include 'access_control.php';
+restrictAccess(['Admin', 'Leader', 'Pastor']);
 error_reporting(E_ALL);
 
 $mysqli = include 'database.php';

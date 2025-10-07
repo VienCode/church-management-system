@@ -1,5 +1,7 @@
 <?php
 $mysqli = include 'database.php';
+include 'access_control.php';
+restrictAccess(['Admin', 'Leader', 'Pastor']);
 session_start();
 
 // Fetch all expenses, newest first
