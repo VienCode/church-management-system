@@ -26,51 +26,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $result = $stmt->get_result();
         $user = $result->fetch_assoc();
         if ($user) {
-            $user["role"] = "non-member";
-            $user["role_id"] = 4;
+            $user["role_id"] = 4; // Non-member
         }
     }
 
-    // Validate password
-    if ($user && hash("sha256", $password) === $user["pwd_hash"]) {
+    // Correct password check
+    if ($user && password_verify($password, $user["pwd_hash"])) {
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["firstname"] = $user["firstname"];
         $_SESSION["lastname"] = $user["lastname"];
         $_SESSION["role_id"] = $user["role_id"];
 
         switch ($_SESSION["role_id"]) {
-            case 1://admin
+            case 1: // Admin
                 header("Location: admin_dashboard.php");
                 break;
-            case 2://Leader
+            case 2: // Leader
+            case 3: // Member
+            case 4: // Non-member
+            case 5: // Attendance Marker
+            case 8: // Pastor
                 header("Location: dashboard.php");
                 break;
-            case 3://Member
-                header("Location: dashboard.php");
-                break;
-            case 4://Non-member
-                header("Location: dashboard.php");
-                break;
-            case 5://Attendance Marker
-                header("Location: dashboard.php");
-                break;
-            case 6://Editor
+            case 6: // Editor
                 header("Location: upload.php");
                 break;
-            case 7://Accountant
+            case 7: // Accountant
                 header("Location: donations.php");
-                break;
-            case 8://Pastor
-                header("Location: dashboard.php");
                 break;
             default:
                 header("Location: unauthorized.php");
         }
         exit;
     }
+
+    // If invalid
     $is_invalid = true;
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
