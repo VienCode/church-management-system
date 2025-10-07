@@ -2,7 +2,6 @@
 include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([1]); // Admins only
-session_start();
 
 // Handle success messages
 $successMessage = '';
