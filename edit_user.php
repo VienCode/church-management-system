@@ -1,11 +1,9 @@
 <?php
 include 'database.php';
-session_start();
+include 'auth_check.php';
+restrict_to_roles([1]); // Admins only
 
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: unauthorized.php");
-    exit();
-}
+session_start();
 
 $id = $_POST['user_id'];
 $firstname = $_POST['firstname'];
