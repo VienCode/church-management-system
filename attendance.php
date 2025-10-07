@@ -89,7 +89,7 @@ $stmt->close();
 </head>
 <body>
     <div class="main-layout">
-       nav class="sidebar">
+       <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span>⛪</span></div>
         <div class="logo">Unity Christian Fellowship</div>
