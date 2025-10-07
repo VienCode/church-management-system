@@ -1,8 +1,10 @@
 <?php
 $mysqli = include 'database.php';
-include 'access_control.php';
-restrictAccess(['Admin', 'Leader', 'Pastor']);
+include 'auth_check.php';
+restrict_to_roles([2, 5, 9]); // Leader, Cell Leader, Attendance Marker (Admin auto allowed)
 session_start();
+
+
 
 // Ensure attendance_date is always defined
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_date'])) {

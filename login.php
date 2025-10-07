@@ -36,38 +36,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["firstname"] = $user["firstname"];
         $_SESSION["lastname"] = $user["lastname"];
-        $_SESSION["role"] = strtolower($user["role"]);
         $_SESSION["role_id"] = $user["role_id"];
 
-        switch ($_SESSION["role"]) {
-            case "admin":
+        switch ($_SESSION["role_id"]) {
+            case 1://admin
                 header("Location: admin_dashboard.php");
                 break;
-            case "leader":
-            case "cell_group_leader":
-                header("Location: cellgroup.php");
-                break;
-            case "member":
+            case 2://Leader
                 header("Location: dashboard.php");
                 break;
-            case "accountant":
-                header("Location: donations.php");
-                break;
-            case "pastor":
+            case 3://Member
                 header("Location: dashboard.php");
                 break;
-            case "editor":
+            case 4://Non-member
+                header("Location: dashboard.php");
+                break;
+            case 5://Attendance Marker
+                header("Location: dashboard.php");
+                break;
+            case 6://Editor
                 header("Location: upload.php");
                 break;
-            case "non-member":
-                header("Location: nonmember_profile.php");
+            case 7://Accountant
+                header("Location: donations.php");
+                break;
+            case 8://Pastor
+                header("Location: dashboard.php");
                 break;
             default:
                 header("Location: unauthorized.php");
         }
         exit;
     }
-
     $is_invalid = true;
 }
 ?>

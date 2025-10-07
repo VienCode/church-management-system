@@ -1,7 +1,7 @@
 <?php
 $mysqli = include 'database.php';
-include 'access_control.php';
-restrictAccess(['Non-member', 'Member']);
+include 'auth_check.php';
+restrict_to_roles([4]);
 session_start();
 
 

@@ -1,8 +1,11 @@
 <?php
 $mysqli = include 'database.php';
-include 'access_control.php';
-restrictAccess(['Admin', 'Leader', 'Pastor']);
+include 'auth_check.php';
+restrict_to_roles([1, 7]); // Admin & Accountant    
 session_start();
+
+
+
 
 // Handle new donation submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_donation'])) {

@@ -1,7 +1,7 @@
 <?php
 $mysqli = include 'database.php';
-include 'access_control.php';
-restrictAccess(['Admin', 'Leader', 'Pastor']);
+include 'auth_check.php';
+restrict_to_roles([1, 2, 5, 7]);
 session_start();
 
 // Handle submission
