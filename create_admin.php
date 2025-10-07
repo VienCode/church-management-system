@@ -1,6 +1,6 @@
 <?php
 // Run this file once to create an admin, then delete it for security.
-//THIS FILE IS FOR INSERTING ADMIN ACCOUNTS TO THE DATABASE
+//THIS FILE IS FOR INSERTING ACCOUNTS WITH SPECIFIC ROLES FOR TESTING PURPOSES
 
 require __DIR__ . '/database.php';
 
