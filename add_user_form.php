@@ -16,6 +16,99 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
     <meta charset="UTF-8">
     <title>Add New User - Admin</title>
     <link rel="stylesheet" href="styles_system.css">
+    <style>
+        /* --- Form Styling --- */
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 700px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        form label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-top: 15px;
+            margin-bottom: 6px;
+        }
+
+        form input[type="text"],
+        form input[type="email"],
+        form input[type="password"],
+        form input[type="number"],
+        form select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f9fafb;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        form input:focus,
+        form select:focus {
+            outline: none;
+            border-color: #007bff;
+            background-color: #fff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
+        form input:hover,
+        form select:hover {
+            border-color: #999;
+        }
+
+        .primary-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .primary-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .secondary-btn {
+            background-color: #ccc;
+            color: #333;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .secondary-btn:hover {
+            background-color: #bbb;
+            transform: translateY(-1px);
+        }
+
+        .form-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .content-header h1 {
+            color: #222;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
 <div class="main-layout">
@@ -44,9 +137,10 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
     <div class="content-area">
         <div class="content-header">
             <h1 class="page-title">➕ Add New User</h1>
+            <p style="color:#555;">Fill in the form below to create a new user in the system.</p>
         </div>
 
-        <div class="form-container" style="background:white; padding:25px; border-radius:10px; max-width:700px;">
+        <div class="form-container">
             <form action="add_user.php" method="POST">
                 <div style="display:flex; gap:10px;">
                     <div style="flex:1;">
@@ -92,9 +186,10 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                     </select>
                 </div>
 
-                <br>
-                <button type="submit" class="primary-btn">Add User</button>
-                <a href="admin_dashboard.php" class="secondary-btn" style="margin-left:10px;">⬅ Back</a>
+                <div class="form-buttons">
+                    <button type="submit" class="primary-btn">Add User</button>
+                    <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>
+                </div>
             </form>
         </div>
     </div>
