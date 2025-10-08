@@ -4,10 +4,7 @@ include 'auth_check.php';
 restrict_to_roles([1]); // Admins only
 
 // Handle success messages
-$successMessage = '';
-if (isset($_GET['msg'])) {
-    $successMessage = htmlspecialchars($_GET['msg']);
-}
+$successMessage = isset($_GET['msg']) ? htmlspecialchars($_GET['msg']) : '';
 
 // Fetch all roles
 $rolesQuery = $mysqli->query("SELECT * FROM roles ORDER BY role_name ASC");
@@ -138,7 +135,7 @@ $result = $stmt->get_result();
             <button type="submit" class="primary-btn">Filter</button>
         </form>
 
-        <a href="add_user.php" class="primary-btn">➕ Add New User</a>
+        <a href="add_user_form.php" class="primary-btn">➕ Add New User</a>
 
         <!-- Users Table -->
         <div class="attendance-table" style="margin-top:20px;">
@@ -165,7 +162,7 @@ $result = $stmt->get_result();
                                 <td><?= htmlspecialchars($row['contact']) ?></td>
                                 <td><?= ucfirst($row['role_name']) ?></td>
                                 <td>
-                                    <a href="edit_user.php?id=<?= $row['id'] ?>" class="edit-btn">✏️ Edit</a>
+                                    <a href="edit_user_form.php?id=<?= $row['id'] ?>" class="edit-btn">✏️ Edit</a>
                                     <form method="POST" action="delete_user.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
                                         <button type="submit" class="delete-btn" onclick="return confirm('Delete this user?')">🗑️</button>
@@ -176,7 +173,7 @@ $result = $stmt->get_result();
                                     </form>
                                     <form method="POST" action="assign_leader.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="secondary-btn" onclick="return confirm('Promote this user to a Leader?')">⭐ Make Leader</button>
+                                        <button type="submit" class="secondary-btn" onclick="return confirm('Promote this user to Leader?')">⭐ Make Leader</button>
                                     </form>
                                 </td>
                             </tr>
