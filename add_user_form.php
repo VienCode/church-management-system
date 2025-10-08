@@ -1,12 +1,17 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1]); // Admins only
+restrict_to_roles([ROLE_ADMIN]); // Admins only
 
-// Fetch roles
-$roles_result = $mysqli->query("SELECT role_id, role_name FROM roles ORDER BY role_name ASC");
+// Fetch all roles except Non-Member (role_id = 4)
+$roles_result = $mysqli->query("
+    SELECT role_id, role_name 
+    FROM roles 
+    WHERE role_id != 4 
+    ORDER BY role_name ASC
+");
 
-// Fetch leaders
+// Fetch all leaders
 $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
 ?>
 
@@ -14,7 +19,7 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Add New User - Admin</title>
+    <title>Add New User</title>
     <link rel="stylesheet" href="styles_system.css">
     <style>
         /* --- Form Styling --- */
@@ -108,6 +113,12 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
             font-size: 24px;
             margin-bottom: 10px;
         }
+
+        .note {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -124,7 +135,6 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
             <li><a href="members.php"><span>👤</span> Members</a></li>
             <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
             <li><a href="donations.php"><span>💰</span> Donations</a></li>
-
             <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
@@ -137,7 +147,8 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
     <div class="content-area">
         <div class="content-header">
             <h1 class="page-title">➕ Add New User</h1>
-            <p style="color:#555;">Fill in the form below to create a new user in the system.</p>
+            <p class="note">Fill out the details below to manually create a user account.  
+            <strong>Note:</strong> “Non-Member” accounts must register themselves through the public registration page.</p>
         </div>
 
         <div class="form-container">
@@ -157,16 +168,16 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                 <input type="email" name="email" required>
 
                 <label>Password</label>
-                <input type="password" name="pwd" required placeholder="At least 8 characters">
+                <input type="password" name="password" required placeholder="Enter temporary password">
 
                 <label>Contact</label>
-                <input type="text" name="contact" placeholder="09XXXXXXXXX">
+                <input type="text" name="contact" placeholder="Optional">
 
                 <label>Age</label>
-                <input type="number" name="age" min="0" max="120">
+                <input type="number" name="age" min="0" max="120" placeholder="Optional">
 
                 <label>Address</label>
-                <input type="text" name="user_address">
+                <input type="text" name="user_address" placeholder="Optional">
 
                 <label>Role</label>
                 <select name="role_id" id="roleSelect" required>
@@ -177,7 +188,7 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                 </select>
 
                 <div id="leaderSelectContainer" style="display:none; margin-top:15px;">
-                    <label>Select Leader (For Members Only)</label>
+                    <label>Select Leader (for Members only)</label>
                     <select name="leader_id">
                         <option value="" disabled selected>Select Leader</option>
                         <?php while ($leader = $leaders_result->fetch_assoc()): ?>
@@ -187,7 +198,7 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                 </div>
 
                 <div class="form-buttons">
-                    <button type="submit" class="primary-btn">Add User</button>
+                    <button type="submit" class="primary-btn">💾 Save User</button>
                     <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>
                 </div>
             </form>
@@ -196,12 +207,12 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
 </div>
 
 <script>
-// Show Leader dropdown only if role_id == 3 (Member)
+// Show/hide leader dropdown dynamically
 document.addEventListener('DOMContentLoaded', function() {
     const roleSelect = document.getElementById('roleSelect');
     const leaderSelectContainer = document.getElementById('leaderSelectContainer');
     roleSelect.addEventListener('change', function() {
-        leaderSelectContainer.style.display = (this.value == '3') ? 'block' : 'none';
+        leaderSelectContainer.style.display = (this.value == '3') ? 'block' : 'none'; // Only show for Members
     });
 });
 </script>

@@ -1,7 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1]); // Admins only
+restrict_to_roles([ROLE_ADMIN]); // Admins only
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: admin_dashboard.php?msg=Invalid user ID");
