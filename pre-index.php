@@ -36,7 +36,7 @@
     </div>
 
     <div class ="color">
-        <img class="ucf_joinus" src="images/Unity_logo.png" alt="UCF Logo">
+        <img class="ucf_joinus" src="images/Unity_logo.jpg" alt="UCF Logo">
         <div class ="join">
             <p>"The journey as followers of Christ is a lifelong process of spiritual growth, discipleship, and transformation, guided by faith and the teachings of Jesus.
             It involves setting out on an inner journey, learning to obey and imitate Christ, developing a close relationship with Him, and ultimately becoming more like Him."</p>

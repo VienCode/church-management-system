@@ -94,7 +94,7 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
     <!-- Sidebar -->
     <nav class="sidebar">
     <div class="logo-section">
-        <div class="logo-placeholder"><span>⛪</span></div>
+        <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
     </div>
     <ul class="nav-menu">
