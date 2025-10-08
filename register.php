@@ -1,5 +1,10 @@
 <?php
 session_start();
+$mysqli = require __DIR__ . "/database.php";
+
+// Fetch leaders dynamically
+$leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
+
 if (isset($_SESSION['register_errors'])) {
     echo '<div style="color: #ff6666; font-weight: bold; margin-bottom: 15px;">';
     foreach ($_SESSION['register_errors'] as $error) {
@@ -15,20 +20,16 @@ if (isset($_SESSION['register_success'])) {
     unset($_SESSION['register_success']);
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&family=Signika:wght@300..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <title>Register</title>
 </head>
 <body class="register_body">
-
     <div class="topnav">
         <img class="ucf-topnav" src="images/ucf.png" alt="UCF Logo Top Nav">
         <a href="login.php">Back to Login</a>
@@ -37,7 +38,6 @@ if (isset($_SESSION['register_success'])) {
 
     <div class="container-register">
         <div class="register">
-
             <h3>Register Form</h3>
 
             <form action="process-signup.php" method="post" name="register" id="register" novalidate>
@@ -58,15 +58,23 @@ if (isset($_SESSION['register_success'])) {
                 <input required class="customInput" type="number" name="age" placeholder="Age*" min="0"><br><br>
                 <input required class="customAddressInput" type="text" name="user_address" placeholder="Address*">
 
-                <label for="cell_leader">Cell Leader:</label>
-                <select class="customLeaderInput" name="cell_leader" id="cell_leader">
-                    <option value="" disabled selected hidden>Cell Leader</option>
-                    <option value="None">None</option>
-                    <option value="JL Taberdo">JL Taberdo</option>
-                    <option value="JC Casidor">JC Casidor</option>
-                    <option value="Jav Agustin">Jav Agustin</option>
-                    <option value="Dave Dapitillo">Dave Dapitillo</option>
-                </select><br><br>
+                <h4>Are you an existing church member?</h4>
+                <select required class="customLeaderInput" name="is_existing_member" id="is_existing_member">
+                    <option value="" disabled selected hidden>Select Option</option>
+                    <option value="no">No (I’m a new attendee)</option>
+                    <option value="yes">Yes (I’m already a member)</option>
+                </select>
+
+                <div id="leaderSelectContainer" style="display:none; margin-top:10px;">
+                    <label for="leader_id">Select Your Leader:</label>
+                    <select class="customLeaderInput" name="leader_id" id="leader_id">
+                        <option value="" disabled selected hidden>Select Leader</option>
+                        <?php while ($row = $leaders_result->fetch_assoc()): ?>
+                            <option value="<?= $row['leader_id'] ?>"><?= htmlspecialchars($row['leader_name']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <br><br>
 
                 <h5>*Input the desired information to use</h5>
                 <input required class="customInput" type="email" name="email" placeholder="Email*">
@@ -83,17 +91,23 @@ if (isset($_SESSION['register_success'])) {
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
+        const memberSelect = document.getElementById("is_existing_member");
+        const leaderSelectContainer = document.getElementById("leaderSelectContainer");
+
+        memberSelect.addEventListener("change", function () {
+            leaderSelectContainer.style.display = (this.value === "yes") ? "block" : "none";
+        });
+
         function handleSelect(selectElement) {
-            if (!selectElement) return; 
+            if (!selectElement) return;
             if (!selectElement.value) selectElement.style.color = "gray";
             selectElement.addEventListener("change", function () {
                 this.style.color = this.value ? "black" : "gray";
             });
         }
         handleSelect(document.getElementById("suffix"));
-        handleSelect(document.getElementById("cell_leader"));
+        handleSelect(document.getElementById("leader_id"));
     });
     </script>
-
 </body>
 </html>
