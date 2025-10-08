@@ -9,7 +9,7 @@ if (isset($_GET['msg'])) {
     $successMessage = htmlspecialchars($_GET['msg']);
 }
 
-// Fetch all roles for filters and dropdowns
+// Fetch all roles
 $rolesQuery = $mysqli->query("SELECT * FROM roles ORDER BY role_name ASC");
 $roles = $rolesQuery->fetch_all(MYSQLI_ASSOC);
 
@@ -53,7 +53,6 @@ $sql = "SELECT users.*, roles.role_name
         WHERE $where 
         ORDER BY users.id DESC 
         LIMIT $limit OFFSET $offset";
-
 $stmt = $mysqli->prepare($sql);
 if ($types) $stmt->bind_param($types, ...$params);
 $stmt->execute();
@@ -115,11 +114,9 @@ $result = $stmt->get_result();
         <div class="promotion-section" style="background:white; padding:20px; border-radius:10px; margin-bottom:20px;">
             <h2>🕊️ Member Promotion Tool</h2>
             <p>Check for non-members who have reached 10 attendances. They’ll automatically be promoted to Members.</p>
-
             <form id="promotionForm" action="php/promotions/promote_nonmembers.php" method="post">
                 <button type="submit" class="primary-btn">Run Promotion Check</button>
             </form>
-
             <?php if (isset($_SESSION['promotion_result'])): ?>
                 <div class="success-message" id="promotionMessage" style="margin-top:15px;">
                     <div class="success-icon">✔</div>
@@ -128,7 +125,6 @@ $result = $stmt->get_result();
                 <?php unset($_SESSION['promotion_result']); ?>
             <?php endif; ?>
         </div>
-        <!-- End Promotion Tool -->
 
         <!-- Search & Filter -->
         <form method="GET" style="display:flex; gap:10px; margin-bottom:15px;">
@@ -142,8 +138,9 @@ $result = $stmt->get_result();
             <button type="submit" class="primary-btn">Filter</button>
         </form>
 
-        <button class="primary-btn" onclick="openModal('addUserModal')">➕ Add User</button>
+        <a href="add_user.php" class="primary-btn">➕ Add New User</a>
 
+        <!-- Users Table -->
         <div class="attendance-table" style="margin-top:20px;">
             <table>
                 <thead>
@@ -168,14 +165,18 @@ $result = $stmt->get_result();
                                 <td><?= htmlspecialchars($row['contact']) ?></td>
                                 <td><?= ucfirst($row['role_name']) ?></td>
                                 <td>
-                                    <button class="edit-btn" onclick="openEditUserModal(<?= $row['id'] ?>)">✏️ Edit</button>
+                                    <a href="edit_user.php?id=<?= $row['id'] ?>" class="edit-btn">✏️ Edit</a>
                                     <form method="POST" action="delete_user.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
                                         <button type="submit" class="delete-btn" onclick="return confirm('Delete this user?')">🗑️</button>
                                     </form>
                                     <form method="POST" action="reset_password.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="secondary-btn" onclick="return confirm('Reset this user password to default?')">🔒</button>
+                                        <button type="submit" class="secondary-btn" onclick="return confirm('Reset password to default?')">🔒</button>
+                                    </form>
+                                    <form method="POST" action="assign_leader.php" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                        <button type="submit" class="secondary-btn" onclick="return confirm('Promote this user to a Leader?')">⭐ Make Leader</button>
                                     </form>
                                 </td>
                             </tr>
@@ -204,90 +205,24 @@ $result = $stmt->get_result();
     </div>
 </div>
 
-<!-- Add User Modal -->
-<div id="addUserModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('addUserModal')">&times;</span>
-        <h2>Add New User</h2>
-        <form action="add_user.php" method="POST">
-            <label>First Name</label><input type="text" name="firstname" required>
-            <label>Last Name</label><input type="text" name="lastname" required>
-            <label>Email</label><input type="email" name="email" required>
-            <label>Password</label><input type="password" name="password" required>
-            <label>Role</label>
-            <select name="role_id" required>
-                <?php foreach ($roles as $r): ?>
-                    <option value="<?= $r['id'] ?>"><?= ucfirst($r['role_name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="save-btn">Save</button>
-        </form>
-    </div>
-</div>
-
-<!-- Edit User Modal -->
-<div id="editUserModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('editUserModal')">&times;</span>
-        <h2>Edit User</h2>
-        <form action="edit_user.php" method="POST">
-            <input type="hidden" name="user_id" id="edit_user_id">
-            <label>First Name</label><input type="text" name="firstname" id="edit_firstname" required>
-            <label>Last Name</label><input type="text" name="lastname" id="edit_lastname" required>
-            <label>Email</label><input type="email" name="email" id="edit_email" required>
-            <label>Role</label>
-            <select name="role_id" id="edit_role_id" required>
-                <?php foreach ($roles as $r): ?>
-                    <option value="<?= $r['id'] ?>"><?= ucfirst($r['role_name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="save-btn">Update</button>
-        </form>
-    </div>
-</div>
-
-<script src="script.js"></script>
 <script>
-// Fetch user data into edit modal
-function openEditUserModal(userId) {
-    fetch('fetch_user.php?id=' + userId)
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('edit_user_id').value = data.id;
-            document.getElementById('edit_firstname').value = data.firstname;
-            document.getElementById('edit_lastname').value = data.lastname;
-            document.getElementById('edit_email').value = data.email;
-            document.getElementById('edit_role_id').value = data.role_id;
-            openModal('editUserModal');
-        });
-}
-
-// Auto-hide messages, fade-out + auto-scroll + refresh
+// Auto-hide success messages
 document.addEventListener('DOMContentLoaded', function() {
     const msg = document.querySelector('.success-message');
     const promotionMsg = document.getElementById('promotionMessage');
-
-    // General fade out
     if (msg) {
         setTimeout(() => {
             msg.style.transition = 'all 0.8s ease';
             msg.style.opacity = '0';
-            msg.style.transform = 'translateY(-10px)';
             setTimeout(() => msg.style.display = 'none', 800);
         }, 4000);
     }
-
-    // Promotion success handling
     if (promotionMsg) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(() => {
             promotionMsg.style.transition = 'all 1s ease';
             promotionMsg.style.opacity = '0';
-            promotionMsg.style.transform = 'translateY(-15px)';
         }, 3000);
-        setTimeout(() => {
-            window.location.reload();
-        }, 4500);
+        setTimeout(() => window.location.reload(), 4500);
     }
 });
 </script>
