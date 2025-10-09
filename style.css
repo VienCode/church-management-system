@@ -493,6 +493,16 @@ html, body {
 }
 
 .footer {
+  background: linear-gradient(135deg, #81d6f8 10%, #0271c0 100%);
+  color: white;
+  text-align: center;
+  padding: 20px;
+  font-family: 'Lexend Deca', sans-serif;
+  font-size: 14px;
+  margin-top: auto;
+}
+
+.footer1 {
   position: fixed;
   bottom: 0;
   left: 0;
