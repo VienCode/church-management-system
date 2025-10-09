@@ -131,7 +131,8 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_logs.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
