@@ -1,37 +1,90 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN]); // Only admins can access
+restrict_to_roles([ROLE_ADMIN]); // Admin-only access
 
-// Fetch eligible non-members (10 or more attendances)
-$sql = "
-    SELECT n.*, COUNT(a.attendance_id) AS total_attendance
-    FROM non_members n
-    LEFT JOIN attendance a ON n.id = a.user_id
-    GROUP BY n.id
-    HAVING total_attendance >= 10
-";
-$eligibleResult = $mysqli->query($sql);
-
-// Fetch leaders (for assigning)
-$leadersResult = $mysqli->query("
-    SELECT id, firstname, lastname, user_code
-    FROM users
-    WHERE role_id = (SELECT role_id FROM roles WHERE role_name = 'leader' LIMIT 1)
+// Fetch eligible non-members (10+ attendances)
+$eligible = $mysqli->query("
+    SELECT id, firstname, lastname, email, contact, attendances_count
+    FROM non_members
+    WHERE attendances_count >= 10
 ");
 
-$leaders = [];
-while ($leader = $leadersResult->fetch_assoc()) {
-    $leaders[] = $leader;
-}
+// Fetch all leaders
+$leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Promotion Panel - Unity Christian Fellowship</title>
+    <title>Promotion Panel | Unity Christian Fellowship</title>
     <link rel="stylesheet" href="styles_system.css">
+    <style>
+        .promotion-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .primary-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .primary-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .secondary-btn {
+            background-color: #ccc;
+            color: #333;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .secondary-btn:hover {
+            background-color: #aaa;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #222;
+        }
+    </style>
 </head>
 <body>
 <div class="main-layout">
@@ -77,6 +130,7 @@ while ($leader = $leadersResult->fetch_assoc()) {
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
+            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
@@ -84,63 +138,68 @@ while ($leader = $leadersResult->fetch_assoc()) {
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
     <!-- Content Area -->
     <div class="content-area">
-        <div class="content-header">
-            <div class="header-left">
-                <h1 class="page-title">🕊️ Promotion Panel</h1>
-                <p>Review eligible non-members (10+ attendances) and assign them a leader before promotion.</p>
-            </div>
-        </div>
+        <div class="promotion-container">
+            <h1>🕊️ Promotion Panel</h1>
+            <p>These Non-Members have reached 10 or more attendances. Assign a leader and promote them to Members.</p>
 
-        <div class="attendance-table" style="margin-top:20px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>User Code</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Contact</th>
-                        <th>Total Attendance</th>
-                        <th>Assign Leader</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($eligibleResult->num_rows === 0): ?>
+            <?php if (isset($_SESSION['promotion_result'])): ?>
+                <div class="success-message" style="margin:15px 0;">
+                    <?= $_SESSION['promotion_result'] ?>
+                </div>
+                <?php unset($_SESSION['promotion_result']); ?>
+            <?php endif; ?>
+
+            <form action="promote_nonmembers.php" method="POST">
+                <table>
+                    <thead>
                         <tr>
-                            <td colspan="7" style="text-align:center;">No eligible non-members for promotion.</td>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Contact</th>
+                            <th>Attendances</th>
+                            <th>Assign Leader</th>
+                            <th>Promote</th>
                         </tr>
-                    <?php else: ?>
-                        <?php while ($row = $eligibleResult->fetch_assoc()): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($row['user_code']) ?></td>
-                                <td><?= htmlspecialchars($row['firstname'] . ' ' . $row['lastname']) ?></td>
-                                <td><?= htmlspecialchars($row['email']) ?></td>
-                                <td><?= htmlspecialchars($row['contact']) ?></td>
-                                <td><?= $row['total_attendance'] ?></td>
-                                <td>
-                                    <form method="POST" action="promote_nonmembers.php" style="display:flex; align-items:center; gap:8px;">
-                                        <select name="leader_id" required style="padding:5px; border-radius:5px;">
-                                            <option value="">Select Leader</option>
-                                            <?php foreach ($leaders as $leader): ?>
-                                                <option value="<?= $leader['id'] ?>">
-                                                    <?= htmlspecialchars($leader['firstname'] . ' ' . $leader['lastname']) ?> 
-                                                    (<?= htmlspecialchars($leader['user_code']) ?>)
+                    </thead>
+                    <tbody>
+                        <?php if ($eligible->num_rows === 0): ?>
+                            <tr><td colspan="6">No non-members eligible for promotion.</td></tr>
+                        <?php else: ?>
+                            <?php while ($nm = $eligible->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($nm['firstname'] . ' ' . $nm['lastname']) ?></td>
+                                    <td><?= htmlspecialchars($nm['email']) ?></td>
+                                    <td><?= htmlspecialchars($nm['contact']) ?></td>
+                                    <td><?= $nm['attendances_count'] ?></td>
+                                    <td>
+                                        <select name="leader_id[<?= $nm['id'] ?>]" required>
+                                            <option value="" disabled selected>Select Leader</option>
+                                            <?php
+                                            $leaders->data_seek(0);
+                                            while ($leader = $leaders->fetch_assoc()): ?>
+                                                <option value="<?= $leader['leader_id'] ?>">
+                                                    <?= htmlspecialchars($leader['leader_name']) ?>
                                                 </option>
-                                            <?php endforeach; ?>
+                                            <?php endwhile; ?>
                                         </select>
-                                </td>
-                                <td>
-                                        <input type="hidden" name="non_member_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="primary-btn" onclick="return confirm('Promote this user to member?')">Promote</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                                    </td>
+                                    <td>
+                                        <input type="checkbox" name="promote_ids[]" value="<?= $nm['id'] ?>">
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <div style="margin-top:20px;">
+                    <button type="submit" class="primary-btn">🚀 Promote Selected</button>
+                    <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>
+                </div>
+            </form>
         </div>
     </div>
 </div>

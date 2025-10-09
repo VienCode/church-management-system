@@ -15,7 +15,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-    <nav class="sidebar">
+   <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
@@ -56,7 +56,8 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
+            <li><a href="promotion_page.php" ><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
