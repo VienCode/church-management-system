@@ -223,7 +223,7 @@ $posts_result = $posts_query->get_result();
 <div class="main-layout">
     <nav class="sidebar">
     <div class="logo-section">
-        <div class="logo-placeholder"><span>⛪</span></div>
+        <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
     </div>
     <ul class="nav-menu">
@@ -263,6 +263,7 @@ $posts_result = $posts_query->get_result();
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>

@@ -29,9 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-    <nav class="sidebar">
+   <nav class="sidebar">
     <div class="logo-section">
-        <div class="logo-placeholder"><span>⛪</span></div>
+        <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
     </div>
     <ul class="nav-menu">
@@ -54,10 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
             <li><a href="donations.php"><span>💰</span> Donations</a></li>
         <?php endif; ?>
 
+        <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
         <!-- Divider -->
         <li class="nav-divider"></li>
-
-        <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
             <li class="nav-section">💼 Expenses</li>
             <li><a href="expenses_submit.php"><span>🧾</span> Submit Expense</a></li>
             <li><a href="expenses_history.php"><span>📊</span> History</a></li>
@@ -67,19 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
             <li><a href="expenses_approval.php"><span>✅</span> Approvals</a></li>
         <?php endif; ?>
 
-
-        <li class="nav-divider"></li>
-
         <?php if (can_access([ROLE_ADMIN])): ?>
+        <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
-
 
     <!-- Content -->
     <div class="content-area">

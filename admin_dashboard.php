@@ -91,6 +91,8 @@ $result = $stmt->get_result();
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php" class="active"><span>⚙️</span> Manage Users</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+
             <li><a href="logout.php"><span>🚪</span> Logout</a></li>
         </ul>
     </nav>
