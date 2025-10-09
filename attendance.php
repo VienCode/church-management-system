@@ -3,29 +3,33 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER]);
 
-// current marker (who records the attendance)
 $current_user_code = $_SESSION['user_code'] ?? 'SYSTEM';
 
-// Determine attendance date (prefer posted date)
+// Determine attendance date
 $attendance_date = $_POST['attendance_date'] ?? ($_SESSION['attendance_date'] ?? date('Y-m-d'));
 
-// Save attendance when submitted
+// Handle saving
 $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
-    // Use the attendance_date sent with the save form (safer)
     $attendance_date = $_POST['attendance_date'] ?? $attendance_date;
 
     if (!empty($_POST['attendance']) && is_array($_POST['attendance'])) {
         foreach ($_POST['attendance'] as $user_code => $data) {
             $status = $data['status'] ?? null;
-            // If time given use it, else use server current time for Present
             $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
-            if ($status) {
+            // Only insert if user_code exists
+            $verify = $mysqli->prepare("SELECT user_code FROM users WHERE user_code = ?");
+            $verify->bind_param("s", $user_code);
+            $verify->execute();
+            $exists = $verify->get_result()->num_rows > 0;
+            $verify->close();
+
+            if ($exists && $status) {
                 $stmt = $mysqli->prepare("
                     INSERT INTO attendance (user_code, attendance_date, status, time_in, recorded_by)
                     VALUES (?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE status = VALUES(status), time_in = VALUES(time_in), recorded_by = VALUES(recorded_by)
+                    ON DUPLICATE KEY UPDATE status=VALUES(status), time_in=VALUES(time_in), recorded_by=VALUES(recorded_by)
                 ");
                 $stmt->bind_param("sssss", $user_code, $attendance_date, $status, $time_in, $current_user_code);
                 $stmt->execute();
@@ -37,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
     }
 }
 
-// Fetch users except non-members (role_id = 4)
+// Fetch users except non-members
 $sql = "
 SELECT u.user_code,
        CONCAT(u.firstname, ' ', u.lastname) AS fullname,
@@ -53,56 +57,33 @@ ORDER BY u.lastname ASC, u.firstname ASC
 $stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
 $stmt->execute();
-$members_result = $stmt->get_result();
-
-// Compute stats
-$presentCount = 0;
-$absentCount = 0;
-$members_data = [];
-while ($row = $members_result->fetch_assoc()) {
-    // Normalize time_in to HH:MM for display (if present)
-    if (!empty($row['time_in'])) {
-        $row['time_in'] = date('H:i', strtotime($row['time_in']));
-    }
-    $members_data[] = $row;
-    if ($row['status'] === 'Present') $presentCount++;
-    if ($row['status'] === 'Absent') $absentCount++;
-}
-$totalMembers = count($members_data);
-$notMarked = $totalMembers - ($presentCount + $absentCount);
-
-$stmt->close();
+$members = $stmt->get_result();
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Attendance Management | UCF</title>
-    <link rel="stylesheet" href="styles_system.css">
-    <style>
-        /* Inline styles for attendance module (keeps design consistent) */
-        .attendance-container { background:#fff; padding:24px; border-radius:12px; max-width:1100px; margin:30px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); }
-        table { width:100%; border-collapse:collapse; margin-top:14px; }
-        th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
-        th { background:#0271c0; color:#fff; }
-        .present-btn, .absent-btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
-        .present-btn { background:#28a745; color:#fff; }
-        .absent-btn { background:#dc3545; color:#fff; }
-        .present-btn.selected { box-shadow:0 2px 6px rgba(40,167,69,0.28); transform:translateY(-1px); }
-        .absent-btn.selected { box-shadow:0 2px 6px rgba(220,53,69,0.28); transform:translateY(-1px); }
-        .time-input { padding:6px; border-radius:6px; border:1px solid #ccc; width:110px; text-align:center; }
-        .save-btn { background:#0271c0; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:700; margin-top:16px; }
-        .save-btn:hover { background:#02589b; }
-        .stats { display:flex; gap:12px; margin-top:18px; }
-        .stat-card { flex:1; background:#f6f8fb; padding:10px; border-radius:10px; text-align:center; }
-        .success { background:#e6ffed; color:#1b6b33; padding:10px; border-radius:8px; margin-bottom:12px; font-weight:700; }
-        .date-selector { margin-bottom:14px; display:flex; gap:10px; align-items:center; }
-        input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
-    </style>
+<meta charset="utf-8">
+<title>Attendance Management | UCF</title>
+<link rel="stylesheet" href="styles_system.css">
+<style>
+.attendance-container { background:#fff; padding:24px; border-radius:12px; max-width:1100px; margin:30px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+table { width:100%; border-collapse:collapse; margin-top:14px; }
+th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
+th { background:#0271c0; color:#fff; }
+.present-btn, .absent-btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+.present-btn { background:#28a745; color:#fff; }
+.absent-btn { background:#dc3545; color:#fff; }
+.present-btn.active { box-shadow:0 2px 6px rgba(40,167,69,0.28); transform:translateY(-1px); }
+.absent-btn.active { box-shadow:0 2px 6px rgba(220,53,69,0.28); transform:translateY(-1px); }
+.time-input { padding:6px; border-radius:6px; border:1px solid #ccc; width:110px; text-align:center; }
+.save-btn { background:#0271c0; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:700; margin-top:16px; }
+.save-btn:hover { background:#02589b; }
+.success { background:#e6ffed; color:#1b6b33; padding:10px; border-radius:8px; margin-bottom:12px; font-weight:700; }
+input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
+</style>
 </head>
 <body>
 <div class="main-layout">
-    <!-- Sidebar (same as other pages) -->
     <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
@@ -157,32 +138,19 @@ $stmt->close();
     <div class="content-area">
         <div class="attendance-container">
             <h1>👥 Attendance Management</h1>
-            <p>Choose a date (past or today), mark Present or Absent. Present will auto-fill arrival time.</p>
 
             <?php if ($success): ?>
                 <div class="success"><?= htmlspecialchars($success) ?></div>
             <?php endif; ?>
 
-            <!-- Date selector form (view attendance for selected date) -->
-            <form method="POST" id="dateForm" class="date-selector" style="margin:0;">
+            <form method="POST">
                 <label><strong>Attendance Date:</strong></label>
-                <input type="date" name="attendance_date" id="attendance_date_input" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
+                <input type="date" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
                 <button type="submit" name="view_attendance" class="save-btn" style="padding:8px 12px;">View</button>
             </form>
 
-            <!-- Stats -->
-            <div class="stats" aria-hidden="true">
-                <div class="stat-card"><strong>Present</strong><div style="font-size:18px; margin-top:6px; color:#28a745;"><?= $presentCount ?></div></div>
-                <div class="stat-card"><strong>Absent</strong><div style="font-size:18px; margin-top:6px; color:#dc3545;"><?= $absentCount ?></div></div>
-                <div class="stat-card"><strong>Total</strong><div style="font-size:18px; margin-top:6px; color:#0271c0;"><?= $totalMembers ?></div></div>
-                <div class="stat-card"><strong>Not Marked</strong><div style="font-size:18px; margin-top:6px;"><?= $notMarked ?></div></div>
-            </div>
-
-            <!-- Attendance table & save form -->
-            <form method="POST" id="attendanceForm" style="margin-top:14px;">
-                <!-- include the attendance_date so save knows which date -->
+            <form method="POST" style="margin-top:20px;">
                 <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
-
                 <table>
                     <thead>
                         <tr>
@@ -195,40 +163,28 @@ $stmt->close();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($members_data)): ?>
-                            <tr><td colspan="6">No users found for this filter.</td></tr>
-                        <?php else: $i = 1; ?>
-                            <?php foreach ($members_data as $m): 
-                                // Create a safe id suffix from user_code (replace non-alnum)
-                                $safe = preg_replace('/[^A-Za-z0-9_-]/', '_', $m['user_code']);
-                                $isPresent = ($m['status'] === 'Present');
-                                $isAbsent  = ($m['status'] === 'Absent');
-                                ?>
-                                <tr>
-                                    <td><?= $i++ ?></td>
-                                    <td><strong><?= htmlspecialchars($m['user_code']) ?></strong></td>
-                                    <td><?= htmlspecialchars($m['fullname']) ?></td>
-                                    <td><?= htmlspecialchars($m['role_name']) ?></td>
-                                    <td>
-                                        <button type="button" id="present_btn_<?= $safe ?>" class="present-btn <?= $isPresent ? 'selected' : '' ?>"
-                                            onclick="markPresent('<?= $safe ?>')">Present</button>
-
-                                        <button type="button" id="absent_btn_<?= $safe ?>" class="absent-btn <?= $isAbsent ? 'selected' : '' ?>"
-                                            onclick="markAbsent('<?= $safe ?>')">Absent</button>
-
-                                        <!-- Hidden status field (will be either Present/Absent) -->
-                                        <input type="hidden" id="status_<?= $safe ?>" name="attendance[<?= htmlspecialchars($m['user_code']) ?>][status]" value="<?= htmlspecialchars($m['status'] ?? '') ?>">
-                                    </td>
-                                    <td>
-                                        <input type="time" id="time_<?= $safe ?>" name="attendance[<?= htmlspecialchars($m['user_code']) ?>][time_in]" class="time-input" 
-                                            value="<?= htmlspecialchars($m['time_in'] ?? '') ?>" <?= $isPresent ? '' : 'disabled' ?>>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                        <?php
+                        $i = 1;
+                        while ($row = $members->fetch_assoc()):
+                        ?>
+                        <tr data-user="<?= htmlspecialchars($row['user_code']) ?>">
+                            <td><?= $i++ ?></td>
+                            <td><strong><?= htmlspecialchars($row['user_code']) ?></strong></td>
+                            <td><?= htmlspecialchars($row['fullname']) ?></td>
+                            <td><?= htmlspecialchars($row['role_name']) ?></td>
+                            <td>
+                                <button type="button" class="present-btn <?= ($row['status'] === 'Present') ? 'active' : '' ?>" data-action="present">Present</button>
+                                <button type="button" class="absent-btn <?= ($row['status'] === 'Absent') ? 'active' : '' ?>" data-action="absent">Absent</button>
+                                <input type="hidden" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][status]" value="<?= htmlspecialchars($row['status'] ?? '') ?>">
+                            </td>
+                            <td>
+                                <input type="time" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][time_in]" class="time-input"
+                                    value="<?= htmlspecialchars($row['time_in'] ?? '') ?>" <?= ($row['status'] === 'Present') ? '' : 'disabled' ?>>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
                     </tbody>
                 </table>
-
                 <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
             </form>
         </div>
@@ -236,78 +192,33 @@ $stmt->close();
 </div>
 
 <script>
-/**
- * Utility: safe ID suffix => same transformation we used server-side:
- * (only alnum, underscore, hyphen are kept; others replaced by underscore)
- * We pass the safe suffix strings from server, so JS doesn't have to transform.
- */
+function pad(num){return num.toString().padStart(2,'0');}
 
-// markPresent / markAbsent toggle and set time in HH:MM
-function pad(n){ return n.toString().padStart(2,'0'); }
+document.addEventListener('click', e => {
+    if (e.target.matches('.present-btn, .absent-btn')) {
+        const btn = e.target;
+        const row = btn.closest('tr');
+        const user = row.dataset.user;
+        const action = btn.dataset.action;
+        const timeInput = row.querySelector('.time-input');
+        const hiddenStatus = row.querySelector('input[type=hidden]');
+        const presentBtn = row.querySelector('.present-btn');
+        const absentBtn = row.querySelector('.absent-btn');
 
-function markPresent(safe) {
-    try {
-        // toggle classes
-        const presentBtn = document.getElementById('present_btn_' + safe);
-        const absentBtn  = document.getElementById('absent_btn_' + safe);
-        const statusInp  = document.getElementById('status_' + safe);
-        const timeInp    = document.getElementById('time_' + safe);
-
-        if (!statusInp || !timeInp || !presentBtn) return;
-
-        // Set status
-        statusInp.value = 'Present';
-
-        // Set time to current time (HH:MM 24h)
-        const now = new Date();
-        const hh = pad(now.getHours());
-        const mm = pad(now.getMinutes());
-        timeInp.value = hh + ':' + mm;
-        timeInp.disabled = false;
-
-        // Visual toggle
-        presentBtn.classList.add('selected');
-        absentBtn.classList.remove('selected');
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-function markAbsent(safe) {
-    try {
-        const presentBtn = document.getElementById('present_btn_' + safe);
-        const absentBtn  = document.getElementById('absent_btn_' + safe);
-        const statusInp  = document.getElementById('status_' + safe);
-        const timeInp    = document.getElementById('time_' + safe);
-
-        if (!statusInp || !timeInp || !absentBtn) return;
-
-        statusInp.value = 'Absent';
-        timeInp.value = '';
-        timeInp.disabled = true;
-
-        absentBtn.classList.add('selected');
-        presentBtn.classList.remove('selected');
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-// Auto-submit date change to view that date's attendance
-document.addEventListener('DOMContentLoaded', function() {
-    const dateInput = document.getElementById('attendance_date_input');
-    if (dateInput) {
-        dateInput.addEventListener('change', function() {
-            // Ensure no future date
-            const selected = this.value;
-            const today = new Date().toISOString().slice(0,10);
-            if (selected > today) {
-                alert('You cannot select a future date.');
-                this.value = today;
-                return;
-            }
-            document.getElementById('dateForm').submit();
-        });
+        if (action === 'present') {
+            hiddenStatus.value = 'Present';
+            timeInput.disabled = false;
+            const now = new Date();
+            timeInput.value = pad(now.getHours()) + ':' + pad(now.getMinutes());
+            presentBtn.classList.add('active');
+            absentBtn.classList.remove('active');
+        } else {
+            hiddenStatus.value = 'Absent';
+            timeInput.value = '';
+            timeInput.disabled = true;
+            absentBtn.classList.add('active');
+            presentBtn.classList.remove('active');
+        }
     }
 });
 </script>
