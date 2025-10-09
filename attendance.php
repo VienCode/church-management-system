@@ -1,7 +1,7 @@
 <?php
 $mysqli = include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER, ROLE_LEADER]);
+restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER]);
 
 // Handle date selection
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_date'])) {
