@@ -38,15 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
         <!-- GENERAL PAGES -->
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
             <li><a href="members.php"><span>👤</span> Members</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
             <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
@@ -58,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
         <!-- Divider -->
         <li class="nav-divider"></li>
             <li class="nav-section">💼 Expenses</li>
-            <li><a href="expenses_submit.php" class="active"><span>🧾</span> Submit Expense</a></li>
+            <li><a href="expenses_submit.php"><span>🧾</span> Submit Expense</a></li>
             <li><a href="expenses_history.php"><span>📊</span> History</a></li>
         <?php endif; ?>
 
@@ -71,13 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_page.php" ><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
     <!-- Content -->
     <div class="content-area">
         <h1>Expense Submission</h1>

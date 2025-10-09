@@ -69,7 +69,7 @@ $result = $stmt->get_result();
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-    <nav class="sidebar">
+   <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
@@ -78,15 +78,16 @@ $result = $stmt->get_result();
         <!-- GENERAL PAGES -->
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
             <li><a href="members.php"><span>👤</span> Members</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
             <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
@@ -118,6 +119,7 @@ $result = $stmt->get_result();
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
 
     <!-- Content Area -->
     <div class="content-area">

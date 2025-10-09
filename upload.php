@@ -230,16 +230,17 @@ $posts_result = $posts_query->get_result();
         <!-- GENERAL PAGES -->
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
             <li><a href="members.php"><span>👤</span> Members</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
-            <li><a href="upload.php" class="active"><span>📢</span> Church Updates</a></li>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
@@ -270,6 +271,7 @@ $posts_result = $posts_query->get_result();
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
 
     <div class="content-area">
         <div class="content-header">

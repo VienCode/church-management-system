@@ -125,20 +125,21 @@ while ($row = $chart_data->fetch_assoc()) {
         <!-- GENERAL PAGES -->
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
             <li><a href="members.php"><span>👤</span> Members</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
             <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
-            <li><a href="donations.php" class="active"><span>💰</span> Donations</a></li>
+            <li><a href="donations.php"><span>💰</span> Donations</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
@@ -165,6 +166,7 @@ while ($row = $chart_data->fetch_assoc()) {
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
     <!-- Content Area -->
     <div class="content-area">
         <h2>Church Donations</h2>

@@ -24,15 +24,16 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
         <!-- GENERAL PAGES -->
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
             <li><a href="members.php"><span>👤</span> Members</a></li>
         <?php endif; ?>
 
-        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
             <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
@@ -49,7 +50,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
         <?php endif; ?>
 
         <?php if (can_access([ROLE_PASTOR, ROLE_ADMIN])): ?>
-            <li><a href="expenses_approval.php" class="active"><span>✅</span> Approvals</a></li>
+            <li><a href="expenses_approval.php"><span>✅</span> Approvals</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN])): ?>
@@ -57,7 +58,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_page.php" ><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
