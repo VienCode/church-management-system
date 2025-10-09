@@ -1,43 +1,55 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER, ROLE_PASTOR]); // Only these can record attendance
+restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER, ROLE_PASTOR]);
+
+// Handle selected date
+$selected_date = isset($_POST['attendance_date']) ? $_POST['attendance_date'] : date('Y-m-d');
+
+// Validate selected date (prevent future dates)
+if ($selected_date > date('Y-m-d')) {
+    $selected_date = date('Y-m-d');
+}
 
 // Handle attendance submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_code'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_attendance'])) {
     $user_code = $_POST['user_code'];
     $recorded_by = $_SESSION['user_code'];
+    $attendance_date = $_POST['attendance_date'];
     $status = 'Present';
 
-    // Check if already marked today
-    $check = $mysqli->prepare("SELECT 1 FROM attendance WHERE user_code = ? AND attendance_date = CURDATE()");
-    $check->bind_param("s", $user_code);
+    // Check if already marked for selected date
+    $check = $mysqli->prepare("SELECT 1 FROM attendance WHERE user_code = ? AND attendance_date = ?");
+    $check->bind_param("ss", $user_code, $attendance_date);
     $check->execute();
     $check_result = $check->get_result();
 
     if ($check_result->num_rows === 0) {
         $stmt = $mysqli->prepare("
             INSERT INTO attendance (user_code, attendance_date, status, time_in, recorded_by)
-            VALUES (?, CURDATE(), ?, CURTIME(), ?)
+            VALUES (?, ?, ?, CURTIME(), ?)
         ");
-        $stmt->bind_param("sss", $user_code, $status, $recorded_by);
+        $stmt->bind_param("ssss", $user_code, $attendance_date, $status, $recorded_by);
         $stmt->execute();
-
-        $successMessage = "✅ Attendance marked for $user_code.";
+        $successMessage = "✅ Attendance marked for $user_code on $attendance_date.";
     } else {
-        $errorMessage = "⚠️ Attendance already recorded for $user_code today.";
+        $errorMessage = "⚠️ Attendance already recorded for $user_code on $attendance_date.";
     }
 }
 
-// Fetch all active users except Non-Members
+// Fetch all active users (excluding Non-Members)
 $sql = "
-    SELECT u.user_code, u.firstname, u.lastname, r.role_name
+    SELECT u.user_code, u.firstname, u.lastname, r.role_name,
+           (SELECT a.status FROM attendance a WHERE a.user_code = u.user_code AND a.attendance_date = ?) AS attendance_status
     FROM users u
     JOIN roles r ON u.role_id = r.role_id
     WHERE u.role_id != 4
     ORDER BY r.role_name, u.firstname
 ";
-$users = $mysqli->query($sql);
+$stmt = $mysqli->prepare($sql);
+$stmt->bind_param("s", $selected_date);
+$stmt->execute();
+$users = $stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -89,6 +101,17 @@ $users = $mysqli->query($sql);
         }
         .success-message { background: #e6ffed; color: #256029; }
         .error-message { background: #ffe6e6; color: #8b0000; }
+        .date-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .date-picker input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -144,7 +167,6 @@ $users = $mysqli->query($sql);
     </ul>
 </nav>
 
-
     <!-- Content -->
     <div class="content-area">
         <div class="attendance-container">
@@ -157,28 +179,38 @@ $users = $mysqli->query($sql);
                 <div class="error-message"><?= $errorMessage ?></div>
             <?php endif; ?>
 
+            <!-- Date Picker -->
+            <form method="POST" class="date-picker">
+                <label><strong>Select Date:</strong></label>
+                <input type="date" name="attendance_date" value="<?= $selected_date ?>" max="<?= date('Y-m-d') ?>" required>
+                <button type="submit" class="primary-btn">📅 Load</button>
+            </form>
+
             <table>
                 <thead>
                     <tr>
                         <th>User Code</th>
                         <th>Full Name</th>
                         <th>Role</th>
+                        <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if ($users->num_rows === 0): ?>
-                    <tr><td colspan="4">No users available for attendance.</td></tr>
+                    <tr><td colspan="5">No users available for attendance.</td></tr>
                 <?php else: ?>
                     <?php while ($row = $users->fetch_assoc()): ?>
                         <tr>
                             <td><?= htmlspecialchars($row['user_code']) ?></td>
                             <td><?= htmlspecialchars($row['firstname'] . ' ' . $row['lastname']) ?></td>
                             <td><?= htmlspecialchars($row['role_name']) ?></td>
+                            <td><?= $row['attendance_status'] ? htmlspecialchars($row['attendance_status']) : '—' ?></td>
                             <td>
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="user_code" value="<?= htmlspecialchars($row['user_code']) ?>">
-                                    <button type="submit" class="primary-btn">✅ Mark Present</button>
+                                    <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($selected_date) ?>">
+                                    <button type="submit" name="mark_attendance" class="primary-btn">✅ Mark Present</button>
                                 </form>
                             </td>
                         </tr>
