@@ -3,22 +3,17 @@ session_start();
 $errors = [];
 
 // === FIELD VALIDATION ===
-if (
-    empty($_POST["firstname"]) ||
-    empty($_POST["lastname"]) ||
-    empty($_POST["contact"]) ||
-    empty($_POST["age"]) ||
-    empty($_POST["user_address"]) ||
-    empty($_POST["email"]) ||
-    empty($_POST["pwd"]) ||
-    empty($_POST["confirm_pwd"]) ||
-    empty($_POST["is_existing_member"])
-) {
-    $errors[] = "Please fill in all required fields.";
+$required_fields = ["firstname", "lastname", "contact", "age", "user_address", "email", "pwd", "confirm_pwd", "is_existing_member"];
+
+foreach ($required_fields as $field) {
+    if (empty($_POST[$field])) {
+        $errors[] = "Please fill in all required fields.";
+        break;
+    }
 }
 
 if (!filter_var($_POST["email"], FILTER_VALIDATE_EMAIL)) {
-    $errors[] = "Invalid Email Address.";
+    $errors[] = "Invalid email address.";
 }
 
 if (strlen($_POST["pwd"]) < 8) {
@@ -53,20 +48,16 @@ if (!empty($errors)) {
     exit;
 }
 
-// === PASSWORD HASHING ===
-$pwd_hash = password_hash($_POST["pwd"], PASSWORD_DEFAULT);
-
 // === DATABASE CONNECTION ===
 $mysqli = require __DIR__ . "/database.php";
 
 // === CHECK FOR DUPLICATE EMAIL ===
-$check_sql = "SELECT email FROM users WHERE email = ?";
-$check_stmt = $mysqli->prepare($check_sql);
+$check_stmt = $mysqli->prepare("SELECT email FROM users WHERE email = ?");
 $check_stmt->bind_param("s", $_POST["email"]);
 $check_stmt->execute();
-$result = $check_stmt->get_result();
+$check_result = $check_stmt->get_result();
 
-if ($result->num_rows > 0) {
+if ($check_result->num_rows > 0) {
     $_SESSION['register_errors'] = ["Email already exists! Please use a different one."];
     $_SESSION['old_data'] = $_POST;
     header("Location: register.php");
@@ -78,14 +69,38 @@ $is_existing_member = $_POST["is_existing_member"] === "yes";
 $role_id = $is_existing_member ? 3 : 4; // 3 = Member, 4 = Non-Member
 $leader_id = $is_existing_member ? $_POST["leader_id"] : NULL;
 
+// === GENERATE UNIQUE USER CODE ===
+$prefix = match($role_id) {
+    1 => 'A', // Admin
+    2 => 'L', // Leader
+    3 => 'M', // Member
+    4 => 'N', // Non-member
+    5 => 'T', // Attendance Marker
+    6 => 'E', // Editor
+    7 => 'C', // Accountant
+    8 => 'P', // Pastor
+    default => 'U'
+};
+
+do {
+    $user_code = $prefix . str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    $check_code = $mysqli->prepare("SELECT 1 FROM users WHERE user_code = ?");
+    $check_code->bind_param("s", $user_code);
+    $check_code->execute();
+    $exists = $check_code->get_result()->num_rows > 0;
+} while ($exists);
+
+// === PASSWORD HASHING ===
+$pwd_hash = password_hash($_POST["pwd"], PASSWORD_DEFAULT);
+
 // === INSERT INTO users TABLE ===
 $sql = "INSERT INTO users 
-        (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, created_at, role_id, leader_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
-
+        (user_code, firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, created_at, role_id, leader_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
 $stmt = $mysqli->prepare($sql);
 $stmt->bind_param(
-    "sssissssii",
+    "sssisssssii",
+    $user_code,
     $_POST["firstname"],
     $_POST["lastname"],
     $_POST["suffix"],
@@ -101,14 +116,20 @@ $stmt->bind_param(
 // === EXECUTE AND REDIRECT ===
 if ($stmt->execute()) {
     if ($is_existing_member) {
-        $_SESSION['register_success'] = "Welcome back! You've been successfully registered as a Member and assigned to your chosen leader.";
+        $_SESSION['register_success'] =
+            "🎉 Welcome back! You've been registered as a Member under your leader.<br>
+            Your unique ID is <b>{$user_code}</b>.";
     } else {
-        $_SESSION['register_success'] = "Registration successful! You are now registered as a Non-Member. Once you reach 10 attendances, you’ll automatically become a Member.";
+        $_SESSION['register_success'] =
+            "✅ Registration successful! You are now a Non-Member.<br>
+            Your unique ID is <b>{$user_code}</b>.<br>
+            Once you reach 10 attendances, you’ll automatically become a Member.";
     }
+
     header("Location: login.php");
     exit;
 } else {
-    $_SESSION['register_errors'] = ["Database Error: " . $mysqli->error];
+    $_SESSION['register_errors'] = ["Database Error: " . htmlspecialchars($mysqli->error)];
     header("Location: register.php");
     exit;
 }

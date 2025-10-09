@@ -1,95 +1,115 @@
 <?php
+session_start();
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1]); // Admin only
+restrict_to_roles([ROLE_ADMIN]); // Admins only
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
-    // Sanitize and validate
+    // Sanitize inputs
     $firstname = trim($_POST["firstname"]);
     $lastname  = trim($_POST["lastname"]);
     $email     = trim($_POST["email"]);
     $password  = $_POST["password"];
+    $contact   = trim($_POST["contact"] ?? '');
+    $age       = intval($_POST["age"] ?? 0);
+    $address   = trim($_POST["user_address"] ?? '');
     $role_id   = intval($_POST["role_id"]);
+    $leader_id = !empty($_POST["leader_id"]) ? intval($_POST["leader_id"]) : null;
 
-    if (empty($firstname) || empty($lastname) || empty($email) || empty($password)) {
-        header("Location: admin_dashboard.php?msg=❌ Please fill in all fields");
+    // Validate required fields
+    if (empty($firstname) || empty($lastname) || empty($email) || empty($password) || empty($role_id)) {
+        $_SESSION['msg'] = "❌ Please fill in all required fields.";
+        header("Location: add_user_form.php");
         exit;
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header("Location: admin_dashboard.php?msg=❌ Invalid email format");
+        $_SESSION['msg'] = "❌ Invalid email format.";
+        header("Location: add_user_form.php");
         exit;
     }
 
-    // Check for duplicate email
+    // Check duplicate email
     $check = $mysqli->prepare("SELECT id FROM users WHERE email = ?");
     $check->bind_param("s", $email);
     $check->execute();
     $check->store_result();
-
     if ($check->num_rows > 0) {
-        header("Location: admin_dashboard.php?msg=❌ Email already exists");
+        $_SESSION['msg'] = "❌ Email already exists.";
+        header("Location: add_user_form.php");
         exit;
     }
+
+    // === Generate Unique User Code Based on Role ===
+    $prefix = match($role_id) {
+        1 => 'A', // Admin
+        2 => 'L', // Leader
+        3 => 'M', // Member
+        4 => 'N', // Non-Member
+        5 => 'T', // Attendance Marker
+        6 => 'E', // Editor
+        7 => 'C', // Accountant
+        8 => 'P', // Pastor
+        default => 'U' // Unknown
+    };
+
+    do {
+        $user_code = $prefix . str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $check_code = $mysqli->prepare("SELECT 1 FROM users WHERE user_code = ?");
+        $check_code->bind_param("s", $user_code);
+        $check_code->execute();
+        $exists = $check_code->get_result()->num_rows > 0;
+    } while ($exists);
 
     // Hash password
     $pwd_hash = password_hash($password, PASSWORD_DEFAULT);
 
-    // Insert user
-    $sql = "INSERT INTO users (firstname, lastname, email, pwd_hash, role_id, created_at)
-            VALUES (?, ?, ?, ?, ?, NOW())";
+    // Insert user into `users` table
+    $sql = "INSERT INTO users 
+            (user_code, firstname, lastname, email, pwd_hash, role_id, contact, age, user_address, leader_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
     $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param("ssssi", $firstname, $lastname, $email, $pwd_hash, $role_id);
+    $stmt->bind_param(
+        "sssssiisis",
+        $user_code,
+        $firstname,
+        $lastname,
+        $email,
+        $pwd_hash,
+        $role_id,
+        $contact,
+        $age,
+        $address,
+        $leader_id
+    );
 
     if ($stmt->execute()) {
-        header("Location: admin_dashboard.php?msg=✅ User added successfully");
+        // ✅ If the user is a Leader, insert into leaders table
+        if ($role_id == 2) {
+            $leader_name = $firstname . ' ' . $lastname;
+            $checkLeader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE leader_name = ?");
+            $checkLeader->bind_param("s", $leader_name);
+            $checkLeader->execute();
+            $existsLeader = $checkLeader->get_result()->num_rows > 0;
+
+            if (!$existsLeader) {
+                $insertLeader = $mysqli->prepare("INSERT INTO leaders (leader_name, created_at) VALUES (?, NOW())");
+                $insertLeader->bind_param("s", $leader_name);
+                $insertLeader->execute();
+            }
+        }
+
+        $_SESSION['msg'] = "✅ User added successfully with ID: $user_code";
+        header("Location: admin_dashboard.php");
         exit;
     } else {
-        header("Location: admin_dashboard.php?msg=❌ Database error: " . $mysqli->error);
+        $_SESSION['msg'] = "❌ Database error: " . $mysqli->error;
+        header("Location: add_user_form.php");
         exit;
     }
 }
 
-// Display Add User Form
-$rolesResult = $mysqli->query("SELECT role_id, role_name FROM roles ORDER BY role_name ASC");
+header("Location: add_user_form.php");
+exit;
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Add New User</title>
-    <link rel="stylesheet" href="styles_system.css">
-</head>
-<body>
-<div class="content-area" style="max-width:600px; margin:auto; padding:40px;">
-    <h1>➕ Add New User</h1>
-    <form method="POST">
-        <label>First Name</label>
-        <input type="text" name="firstname" required>
-
-        <label>Last Name</label>
-        <input type="text" name="lastname" required>
-
-        <label>Email</label>
-        <input type="email" name="email" required>
-
-        <label>Password</label>
-        <input type="password" name="password" required>
-
-        <label>Role</label>
-        <select name="role_id" required>
-            <option value="" disabled selected>Select a role</option>
-            <?php while ($r = $rolesResult->fetch_assoc()): ?>
-                <option value="<?= $r['role_id'] ?>"><?= htmlspecialchars(ucfirst($r['role_name'])) ?></option>
-            <?php endwhile; ?>
-        </select>
-
-        <button type="submit" class="primary-btn" style="margin-top:15px;">Save User</button>
-    </form>
-
-    <a href="admin_dashboard.php" class="secondary-btn" style="margin-top:20px; display:inline-block;">⬅ Back to Dashboard</a>
-</div>
-</body>
-</html>

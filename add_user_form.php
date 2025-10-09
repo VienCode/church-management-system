@@ -1,4 +1,5 @@
 <?php
+session_start();
 include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]); // Admins only
@@ -119,6 +120,25 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
             font-size: 14px;
             margin-bottom: 15px;
         }
+
+        .msg {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .msg.success {
+            background: #e6f9ec;
+            color: #1a7f37;
+            border: 1px solid #9ae2af;
+        }
+
+        .msg.error {
+            background: #fdecea;
+            color: #b3261e;
+            border: 1px solid #f5c2c0;
+        }
     </style>
 </head>
 <body>
@@ -147,9 +167,18 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
     <div class="content-area">
         <div class="content-header">
             <h1 class="page-title">➕ Add New User</h1>
-            <p class="note">Fill out the details below to manually create a user account.  
-            <strong>Note:</strong> “Non-Member” accounts must register themselves through the public registration page.</p>
+            <p class="note">
+                Fill out the details below to manually create a user account.  
+                <strong>Note:</strong> “Non-Member” accounts must register themselves through the public registration page.
+            </p>
         </div>
+
+        <?php if (isset($_SESSION['msg'])): ?>
+            <div class="msg <?= str_starts_with($_SESSION['msg'], '✅') ? 'success' : 'error' ?>">
+                <?= htmlspecialchars($_SESSION['msg']) ?>
+            </div>
+            <?php unset($_SESSION['msg']); ?>
+        <?php endif; ?>
 
         <div class="form-container">
             <form action="add_user.php" method="POST">

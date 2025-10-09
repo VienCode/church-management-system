@@ -1,7 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([1]); // Admins only
+restrict_to_roles([ROLE_ADMIN]); // Admins only
 
 // Handle success messages
 $successMessage = isset($_GET['msg']) ? htmlspecialchars($_GET['msg']) : '';
@@ -142,7 +142,7 @@ $result = $stmt->get_result();
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>User Code</th>
                         <th>Full Name</th>
                         <th>Email</th>
                         <th>Contact</th>
