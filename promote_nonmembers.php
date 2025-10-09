@@ -54,13 +54,23 @@ foreach ($_POST['promote_ids'] as $nonMemberId) {
     );
     $insert->execute();
 
+    // === Log the promotion ===
+    $logStmt = $mysqli->prepare("
+        INSERT INTO promotion_logs (promoted_user_email, promoted_name, user_code, assigned_leader_id, promoted_by_admin_id)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $promotedName = $nonMember['firstname'] . ' ' . $nonMember['lastname'];
+    $admin_id = $_SESSION['user_id']; // Logged-in admin ID
+    $logStmt->bind_param("sssii", $nonMember['email'], $promotedName, $user_code, $leader_id, $admin_id);
+    $logStmt->execute();
+
     // Delete from non_members
     $delete = $mysqli->prepare("DELETE FROM non_members WHERE id = ?");
     $delete->bind_param("i", $nonMemberId);
     $delete->execute();
 
     $promoted++;
-    $logs[] = "{$nonMember['firstname']} {$nonMember['lastname']} promoted to Member (ID: $user_code)";
+    $logs[] = "$promotedName promoted to Member (ID: $user_code)";
 }
 
 $_SESSION['promotion_result'] = $promoted > 0
