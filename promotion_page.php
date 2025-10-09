@@ -5,7 +5,7 @@ restrict_to_roles([ROLE_ADMIN]); // Admin-only access
 
 // Fetch eligible non-members (10+ attendances)
 $eligible = $mysqli->query("
-    SELECT id, firstname, lastname, email, contact, attendances_count
+    SELECT id, user_code, firstname, lastname, email, contact, attendances_count
     FROM non_members
     WHERE attendances_count >= 10
 ");
@@ -130,7 +130,6 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
@@ -156,6 +155,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                 <table>
                     <thead>
                         <tr>
+                            <th>User Code</th>
                             <th>Full Name</th>
                             <th>Email</th>
                             <th>Contact</th>
@@ -166,10 +166,11 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                     </thead>
                     <tbody>
                         <?php if ($eligible->num_rows === 0): ?>
-                            <tr><td colspan="6">No non-members eligible for promotion.</td></tr>
+                            <tr><td colspan="7">No non-members eligible for promotion.</td></tr>
                         <?php else: ?>
                             <?php while ($nm = $eligible->fetch_assoc()): ?>
                                 <tr>
+                                    <td><?= htmlspecialchars($nm['user_code']) ?></td>
                                     <td><?= htmlspecialchars($nm['firstname'] . ' ' . $nm['lastname']) ?></td>
                                     <td><?= htmlspecialchars($nm['email']) ?></td>
                                     <td><?= htmlspecialchars($nm['contact']) ?></td>
