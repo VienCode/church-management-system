@@ -75,6 +75,7 @@ $result = $mysqli->query("
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
+
     <div class="content-area">
         <h1>📜 Promotion Logs</h1>
         <div class="logs-table">
