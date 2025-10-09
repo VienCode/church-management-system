@@ -99,7 +99,7 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
     </div>
     <ul class="nav-menu">
         <!-- GENERAL PAGES -->
-        <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
+        <li><a href="dashboard.php" class="active"><span>🏠</span> Dashboard</a></li>
 
         <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
@@ -133,14 +133,13 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
-
 
     <!-- Main Content -->
     <div class="content-area">

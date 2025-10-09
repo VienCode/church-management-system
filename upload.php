@@ -239,7 +239,7 @@ $posts_result = $posts_query->get_result();
         <?php endif; ?>
 
         <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
-            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
+            <li><a href="upload.php" class="active"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
@@ -262,8 +262,8 @@ $posts_result = $posts_query->get_result();
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>

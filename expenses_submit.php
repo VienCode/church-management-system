@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
         <!-- Divider -->
         <li class="nav-divider"></li>
             <li class="nav-section">💼 Expenses</li>
-            <li><a href="expenses_submit.php"><span>🧾</span> Submit Expense</a></li>
+            <li><a href="expenses_submit.php" class="active"><span>🧾</span> Submit Expense</a></li>
             <li><a href="expenses_history.php"><span>📊</span> History</a></li>
         <?php endif; ?>
 
@@ -70,14 +70,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
-
     <!-- Content -->
     <div class="content-area">
         <h1>Expense Submission</h1>
