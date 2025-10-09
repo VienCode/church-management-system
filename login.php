@@ -113,7 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
     </div>
 
-    <footer class="footer">
+    <footer class="footer1">
         © <?= date("Y") ?> Unity Christian Fellowship | All Rights Reserved
     </footer>
 </body>
