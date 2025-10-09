@@ -232,7 +232,7 @@ $posts_result = $posts_query->get_result();
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
+            <li><a href="attendance_records.php"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
@@ -240,7 +240,7 @@ $posts_result = $posts_query->get_result();
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
-            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
+            <li><a href="upload.php" class="active"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>

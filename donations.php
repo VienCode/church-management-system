@@ -127,7 +127,7 @@ while ($row = $chart_data->fetch_assoc()) {
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
+            <li><a href="attendance_records.php"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
@@ -139,7 +139,7 @@ while ($row = $chart_data->fetch_assoc()) {
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
-            <li><a href="donations.php"><span>💰</span> Donations</a></li>
+            <li><a href="donations.php" class="active"><span>💰</span> Donations</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>

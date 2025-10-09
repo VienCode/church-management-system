@@ -126,8 +126,8 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
-            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
+            <li><a href="attendance.php" class="active"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance_records.php"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>

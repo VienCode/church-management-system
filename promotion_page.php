@@ -100,7 +100,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
+            <li><a href="attendance_records.php"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
@@ -132,7 +132,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 

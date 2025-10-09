@@ -26,7 +26,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
             <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="attendance_records.php" class="active"><span>📋</span> Attendance Records</a></li>
+            <li><a href="attendance_records.php"><span>📋</span> Attendance Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_MEMBER, ROLE_LEADER])): ?>
@@ -46,7 +46,7 @@ $results = $mysqli->query("SELECT * FROM expenses ORDER BY created_at DESC");
         <li class="nav-divider"></li>
             <li class="nav-section">💼 Expenses</li>
             <li><a href="expenses_submit.php"><span>🧾</span> Submit Expense</a></li>
-            <li><a href="expenses_history.php"><span>📊</span> History</a></li>
+            <li><a href="expenses_history.php" class="active"><span>📊</span> History</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_PASTOR, ROLE_ADMIN])): ?>
