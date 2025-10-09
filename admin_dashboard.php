@@ -70,32 +70,53 @@ $result = $stmt->get_result();
 <div class="main-layout">
     <!-- Sidebar -->
     <nav class="sidebar">
-        <div class="logo-section">
-            <div class="logo-placeholder"><span>⛪</span></div>
-            <div class="logo">Unity Christian Fellowship</div>
-        </div>
-        <ul class="nav-menu">
-            <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
-            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="members.php"><span>👤</span> Members</a></li>
-            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
-            <li><a href="donations.php"><span>💰</span> Donations</a></li>
+    <div class="logo-section">
+        <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
+        <div class="logo">Unity Christian Fellowship</div>
+    </div>
+    <ul class="nav-menu">
+        <!-- GENERAL PAGES -->
+        <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
-            <li class="nav-divider"></li>
+        <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
+            <li><a href="members.php"><span>👤</span> Members</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
+            <li><a href="donations.php"><span>💰</span> Donations</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
+        <!-- Divider -->
+        <li class="nav-divider"></li>
             <li class="nav-section">💼 Expenses</li>
             <li><a href="expenses_submit.php"><span>🧾</span> Submit Expense</a></li>
             <li><a href="expenses_approval.php"><span>✅</span> Approvals</a></li>
-            <li><a href="expenses_history.php"><span>📊</span> History</a></li>
+        <?php endif; ?>
 
-            <li class="nav-divider"></li>
+        <?php if (can_access([ROLE_PASTOR, ROLE_ADMIN])): ?>
+            <li><a href="expenses_history.php"><span>📊</span> History</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_ADMIN])): ?>
+        <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php" class="active"><span>⚙️</span> Manage Users</a></li>
+            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
+        <?php endif; ?>
 
-            <li><a href="logout.php"><span>🚪</span> Logout</a></li>
-        </ul>
-    </nav>
+        <li><a href="logout.php"><span>🚪</span> Logout</a></li>
+    </ul>
+</nav>
 
     <!-- Content Area -->
     <div class="content-area">
@@ -112,25 +133,9 @@ $result = $stmt->get_result();
             </div>
         <?php endif; ?>
 
-        <!-- 🕊️ Member Promotion Tool -->
-        <div class="promotion-section" style="background:white; padding:20px; border-radius:10px; margin-bottom:20px;">
-            <h2>🕊️ Member Promotion Tool</h2>
-            <p>Check for non-members who have reached 10 attendances. They’ll automatically be promoted to Members.</p>
-            <form id="promotionForm" action="promote_nonmembers.php" method="post">
-                <button type="submit" class="primary-btn">Run Promotion Check</button>
-            </form>
-            <?php if (isset($_SESSION['promotion_result'])): ?>
-                <div class="success-message" id="promotionMessage" style="margin-top:15px;">
-                    <div class="success-icon">✔</div>
-                    <div><?= $_SESSION['promotion_result'] ?></div>
-                </div>
-                <?php unset($_SESSION['promotion_result']); ?>
-            <?php endif; ?>
-        </div>
-
         <!-- Search & Filter -->
         <form method="GET" style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="🔍 Search user..." style="padding:10px; border-radius:5px; border:1px solid #ddd; flex:1;">
+            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="🔍 Search user (Name, Email, or Code)..." style="padding:10px; border-radius:5px; border:1px solid #ddd; flex:1;">
             <select name="role" style="padding:10px; border-radius:5px;">
                 <option value="all" <?= $selectedRole=='all'?'selected':'' ?>>All Roles</option>
                 <?php foreach ($roles as $r): ?>
@@ -211,20 +216,12 @@ $result = $stmt->get_result();
 // Auto-hide success messages
 document.addEventListener('DOMContentLoaded', function() {
     const msg = document.querySelector('.success-message');
-    const promotionMsg = document.getElementById('promotionMessage');
     if (msg) {
         setTimeout(() => {
             msg.style.transition = 'all 0.8s ease';
             msg.style.opacity = '0';
             setTimeout(() => msg.style.display = 'none', 800);
         }, 4000);
-    }
-    if (promotionMsg) {
-        setTimeout(() => {
-            promotionMsg.style.transition = 'all 1s ease';
-            promotionMsg.style.opacity = '0';
-        }, 3000);
-        setTimeout(() => window.location.reload(), 4500);
     }
 });
 </script>
