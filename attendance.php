@@ -1,7 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER]);
+restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER]);
 
 $current_user_code = $_SESSION['user_code'] ?? null;
 
