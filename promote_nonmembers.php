@@ -1,6 +1,7 @@
 <?php
 session_start();
-$mysqli = require __DIR__ . '/../database.php'; 
+$mysqli = require __DIR__ . '/database.php';
+
 
 // Fetch all non-members who reached 10 or more attendances
 $query = "SELECT * FROM non_members WHERE attendances_count >= 10";

@@ -111,7 +111,7 @@ $result = $stmt->get_result();
         <div class="promotion-section" style="background:white; padding:20px; border-radius:10px; margin-bottom:20px;">
             <h2>🕊️ Member Promotion Tool</h2>
             <p>Check for non-members who have reached 10 attendances. They’ll automatically be promoted to Members.</p>
-            <form id="promotionForm" action="php/promotions/promote_nonmembers.php" method="post">
+            <form id="promotionForm" action="promote_nonmembers.php" method="post">
                 <button type="submit" class="primary-btn">Run Promotion Check</button>
             </form>
             <?php if (isset($_SESSION['promotion_result'])): ?>
