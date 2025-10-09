@@ -29,10 +29,13 @@ if ($selectedRole !== 'all') {
 }
 
 if (!empty($search)) {
-    $where .= " AND (users.firstname LIKE ? OR users.lastname LIKE ? OR users.email LIKE ?)";
+    $where .= " AND (users.firstname LIKE ? 
+                 OR users.lastname LIKE ? 
+                 OR users.email LIKE ? 
+                 OR users.user_code LIKE ?)";
     $s = "%$search%";
-    $params = array_merge($params, [$s, $s, $s]);
-    $types .= 'sss';
+    $params = array_merge($params, [$s, $s, $s, $s]);
+    $types .= 'ssss';
 }
 
 // Count total users
