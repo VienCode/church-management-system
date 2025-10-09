@@ -3,7 +3,9 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER]);
 
-$current_user_code = $_SESSION['user_code'] ?? 'SYSTEM';
+$current_user_code = isset($_SESSION['user_code']) && !empty($_SESSION['user_code'])
+    ? $_SESSION['user_code']
+    : null;
 
 // Determine attendance date
 $attendance_date = $_POST['attendance_date'] ?? ($_SESSION['attendance_date'] ?? date('Y-m-d'));
@@ -18,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
             $status = $data['status'] ?? null;
             $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
-            // Only insert if user_code exists
+            // Verify user exists
             $verify = $mysqli->prepare("SELECT user_code FROM users WHERE user_code = ?");
             $verify->bind_param("s", $user_code);
             $verify->execute();
@@ -29,7 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
                 $stmt = $mysqli->prepare("
                     INSERT INTO attendance (user_code, attendance_date, status, time_in, recorded_by)
                     VALUES (?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE status=VALUES(status), time_in=VALUES(time_in), recorded_by=VALUES(recorded_by)
+                    ON DUPLICATE KEY UPDATE 
+                        status = VALUES(status),
+                        time_in = VALUES(time_in),
+                        recorded_by = IFNULL(VALUES(recorded_by), recorded_by)
                 ");
                 $stmt->bind_param("sssss", $user_code, $attendance_date, $status, $time_in, $current_user_code);
                 $stmt->execute();
@@ -37,20 +42,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
         }
         $success = "✅ Attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "!";
     } else {
-        $success = "⚠️ Nothing to save.";
+        $success = "⚠️ No attendance data submitted.";
     }
 }
 
 // Fetch users except non-members
 $sql = "
-SELECT u.user_code,
-       CONCAT(u.firstname, ' ', u.lastname) AS fullname,
-       r.role_name,
-       a.status,
-       a.time_in
+SELECT 
+    u.user_code,
+    CONCAT(u.firstname, ' ', u.lastname) AS fullname,
+    r.role_name,
+    a.status,
+    a.time_in
 FROM users u
 JOIN roles r ON u.role_id = r.role_id
-LEFT JOIN attendance a ON a.user_code = u.user_code AND a.attendance_date = ?
+LEFT JOIN attendance a 
+    ON a.user_code = u.user_code 
+    AND a.attendance_date = ?
 WHERE u.role_id != 4
 ORDER BY u.lastname ASC, u.firstname ASC
 ";
@@ -58,9 +66,21 @@ $stmt = $mysqli->prepare($sql);
 $stmt->bind_param("s", $attendance_date);
 $stmt->execute();
 $members = $stmt->get_result();
+
+$presentCount = $absentCount = 0;
+$rows = [];
+while ($row = $members->fetch_assoc()) {
+    if ($row['status'] === 'Present') $presentCount++;
+    if ($row['status'] === 'Absent')  $absentCount++;
+    $rows[] = $row;
+}
+$totalMembers = count($rows);
+$notMarked = $totalMembers - ($presentCount + $absentCount);
+$stmt->close();
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Attendance Management | UCF</title>
@@ -79,9 +99,12 @@ th { background:#0271c0; color:#fff; }
 .save-btn { background:#0271c0; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:700; margin-top:16px; }
 .save-btn:hover { background:#02589b; }
 .success { background:#e6ffed; color:#1b6b33; padding:10px; border-radius:8px; margin-bottom:12px; font-weight:700; }
+.summary { margin-top:18px; display:flex; gap:10px; justify-content:center; }
+.summary div { background:#f6f8fb; padding:10px 18px; border-radius:8px; font-weight:600; }
 input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 </style>
 </head>
+
 <body>
 <div class="main-layout">
     <nav class="sidebar">
@@ -138,17 +161,18 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
     <div class="content-area">
         <div class="attendance-container">
             <h1>👥 Attendance Management</h1>
-
             <?php if ($success): ?>
                 <div class="success"><?= htmlspecialchars($success) ?></div>
             <?php endif; ?>
 
+            <!-- Date Selection -->
             <form method="POST">
                 <label><strong>Attendance Date:</strong></label>
                 <input type="date" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
                 <button type="submit" name="view_attendance" class="save-btn" style="padding:8px 12px;">View</button>
             </form>
 
+            <!-- Attendance Form -->
             <form method="POST" style="margin-top:20px;">
                 <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
                 <table>
@@ -163,30 +187,38 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
-                        $i = 1;
-                        while ($row = $members->fetch_assoc()):
-                        ?>
-                        <tr data-user="<?= htmlspecialchars($row['user_code']) ?>">
-                            <td><?= $i++ ?></td>
-                            <td><strong><?= htmlspecialchars($row['user_code']) ?></strong></td>
-                            <td><?= htmlspecialchars($row['fullname']) ?></td>
-                            <td><?= htmlspecialchars($row['role_name']) ?></td>
-                            <td>
-                                <button type="button" class="present-btn <?= ($row['status'] === 'Present') ? 'active' : '' ?>" data-action="present">Present</button>
-                                <button type="button" class="absent-btn <?= ($row['status'] === 'Absent') ? 'active' : '' ?>" data-action="absent">Absent</button>
-                                <input type="hidden" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][status]" value="<?= htmlspecialchars($row['status'] ?? '') ?>">
-                            </td>
-                            <td>
-                                <input type="time" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][time_in]" class="time-input"
-                                    value="<?= htmlspecialchars($row['time_in'] ?? '') ?>" <?= ($row['status'] === 'Present') ? '' : 'disabled' ?>>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
+                        <?php if (empty($rows)): ?>
+                            <tr><td colspan="6">No members found.</td></tr>
+                        <?php else: $i = 1; foreach ($rows as $row): ?>
+                            <tr data-user="<?= htmlspecialchars($row['user_code']) ?>">
+                                <td><?= $i++ ?></td>
+                                <td><strong><?= htmlspecialchars($row['user_code']) ?></strong></td>
+                                <td><?= htmlspecialchars($row['fullname']) ?></td>
+                                <td><?= htmlspecialchars($row['role_name']) ?></td>
+                                <td>
+                                    <button type="button" class="present-btn <?= ($row['status'] === 'Present') ? 'active' : '' ?>" data-action="present">Present</button>
+                                    <button type="button" class="absent-btn <?= ($row['status'] === 'Absent') ? 'active' : '' ?>" data-action="absent">Absent</button>
+                                    <input type="hidden" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][status]" value="<?= htmlspecialchars($row['status'] ?? '') ?>">
+                                </td>
+                                <td>
+                                    <input type="time" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][time_in]" class="time-input"
+                                           value="<?= htmlspecialchars($row['time_in'] ?? '') ?>" <?= ($row['status'] === 'Present') ? '' : 'disabled' ?>>
+                                </td>
+                            </tr>
+                        <?php endforeach; endif; ?>
                     </tbody>
                 </table>
+
                 <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
             </form>
+
+            <!-- Summary Counter -->
+            <div class="summary" id="liveSummary">
+                <div id="sumPresent">✅ Present: <?= $presentCount ?></div>
+                <div id="sumAbsent">❌ Absent: <?= $absentCount ?></div>
+                <div id="sumNot">⏳ Not Marked: <?= $notMarked ?></div>
+                <div id="sumTotal">👥 Total: <?= $totalMembers ?></div>
+            </div>
         </div>
     </div>
 </div>
@@ -194,11 +226,11 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 <script>
 function pad(num){return num.toString().padStart(2,'0');}
 
+// Update time + summary on click
 document.addEventListener('click', e => {
     if (e.target.matches('.present-btn, .absent-btn')) {
         const btn = e.target;
         const row = btn.closest('tr');
-        const user = row.dataset.user;
         const action = btn.dataset.action;
         const timeInput = row.querySelector('.time-input');
         const hiddenStatus = row.querySelector('input[type=hidden]');
@@ -219,8 +251,24 @@ document.addEventListener('click', e => {
             absentBtn.classList.add('active');
             presentBtn.classList.remove('active');
         }
+        updateSummary();
     }
 });
+
+function updateSummary() {
+    const rows = [...document.querySelectorAll('tbody tr[data-user]')];
+    let present = 0, absent = 0, total = rows.length;
+    rows.forEach(r => {
+        const status = r.querySelector('input[type=hidden]').value;
+        if (status === 'Present') present++;
+        else if (status === 'Absent') absent++;
+    });
+    const not = total - (present + absent);
+    document.getElementById('sumPresent').textContent = '✅ Present: ' + present;
+    document.getElementById('sumAbsent').textContent = '❌ Absent: ' + absent;
+    document.getElementById('sumNot').textContent = '⏳ Not Marked: ' + not;
+    document.getElementById('sumTotal').textContent = '👥 Total: ' + total;
+}
 </script>
 </body>
 </html>
