@@ -1,95 +1,100 @@
 <?php
-$mysqli = include 'database.php';
+include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER]);
+restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER, ROLE_PASTOR]); // Only these can record attendance
 
-// Ensure attendance_date is always defined
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_date'])) {
-    if (!empty($_POST['attendance_date'])) {
-        // Prevent selecting future dates
-        $selected_date = $_POST['attendance_date'];
-        if ($selected_date <= date('Y-m-d')) {
-            $_SESSION['attendance_date'] = $selected_date;
-        }
-    }
-    header("Location: attendance.php");
-    exit();
-}
+// Handle attendance submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_code'])) {
+    $user_code = $_POST['user_code'];
+    $recorded_by = $_SESSION['user_code'];
+    $status = 'Present';
 
-$attendance_date = isset($_SESSION['attendance_date']) ? $_SESSION['attendance_date'] : date('Y-m-d');
+    // Check if already marked today
+    $check = $mysqli->prepare("SELECT 1 FROM attendance WHERE user_code = ? AND attendance_date = CURDATE()");
+    $check->bind_param("s", $user_code);
+    $check->execute();
+    $check_result = $check->get_result();
 
-// Safe defaults for search form
-$search_name = isset($_GET['search_name']) ? htmlspecialchars($_GET['search_name']) : '';
-$search_date = isset($_GET['search_date']) ? htmlspecialchars($_GET['search_date']) : '';
+    if ($check_result->num_rows === 0) {
+        $stmt = $mysqli->prepare("
+            INSERT INTO attendance (user_code, attendance_date, status, time_in, recorded_by)
+            VALUES (?, CURDATE(), ?, CURTIME(), ?)
+        ");
+        $stmt->bind_param("sss", $user_code, $status, $recorded_by);
+        $stmt->execute();
 
-// Attendance submission handler
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
-    if (isset($_POST['attendance']) && is_array($_POST['attendance'])) {
-        foreach ($_POST['attendance'] as $user_id => $data) {
-            $status = $data['status'] ?? null;
-            $time_in = $data['time_in'] ?? null;
-
-            if ($status) {
-                $stmt = $mysqli->prepare("
-                    INSERT INTO attendance (user_id, attendance_date, status, time_in)
-                    VALUES (?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE status=VALUES(status), time_in=VALUES(time_in)
-                ");
-                $stmt->bind_param("isss", $user_id, $attendance_date, $status, $time_in);
-                $stmt->execute();
-            }
-        }
-        $success = "✅ Attendance successfully recorded!";
+        $successMessage = "✅ Attendance marked for $user_code.";
     } else {
-        $success = "⚠️ No attendance data submitted.";
+        $errorMessage = "⚠️ Attendance already recorded for $user_code today.";
     }
 }
 
-// Fetch members with their attendance for the selected date
+// Fetch all active users except Non-Members
 $sql = "
-SELECT 
-    users.id, 
-    CONCAT(users.firstname, ' ', users.lastname) AS name,
-    attendance.status, 
-    attendance.attendance_date,
-    attendance.time_in
-FROM users
-LEFT JOIN attendance 
-    ON attendance.user_id = users.id 
-    AND attendance.attendance_date = ?
-WHERE users.role_id IN (2,3,5,9)
-ORDER BY users.lastname ASC
+    SELECT u.user_code, u.firstname, u.lastname, r.role_name
+    FROM users u
+    JOIN roles r ON u.role_id = r.role_id
+    WHERE u.role_id != 4
+    ORDER BY r.role_name, u.firstname
 ";
-
-$stmt = $mysqli->prepare($sql);
-$stmt->bind_param("s", $attendance_date);
-$stmt->execute();
-$members_result = $stmt->get_result();
-
-// Stats
-$presentCount = 0;
-$absentCount = 0;
-$totalMembers = $members_result->num_rows;
-
-$members_data = [];
-while ($row = $members_result->fetch_assoc()) {
-    $members_data[] = $row;
-    if ($row['status'] === "Present") $presentCount++;
-    if ($row['status'] === "Absent") $absentCount++;
-}
-$notMarked = $totalMembers - ($presentCount + $absentCount);
-
-$stmt->close();
+$users = $mysqli->query($sql);
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Attendance Management</title>
+    <meta charset="UTF-8">
+    <title>Attendance | Unity Christian Fellowship</title>
     <link rel="stylesheet" href="styles_system.css">
+    <style>
+        .attendance-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            margin: 30px auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            text-align: center;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        .primary-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .primary-btn:hover {
+            background: #0056b3;
+        }
+        .success-message, .error-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .success-message { background: #e6ffed; color: #256029; }
+        .error-message { background: #ffe6e6; color: #8b0000; }
+    </style>
 </head>
 <body>
-    <div class="main-layout">
-       <nav class="sidebar">
+<div class="main-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
@@ -99,7 +104,7 @@ $stmt->close();
         <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
 
         <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
-            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
+            <li><a href="attendance.php" class="active"><span>👥</span> Attendance</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_MEMBER, ROLE_LEADER])): ?>
@@ -131,7 +136,7 @@ $stmt->close();
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_page.php" class="active"><span>🕊️</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
@@ -140,203 +145,49 @@ $stmt->close();
 </nav>
 
 
-        <div class="content-area">
-            <h1>Attendance Management Module</h1>
+    <!-- Content -->
+    <div class="content-area">
+        <div class="attendance-container">
+            <h1>👥 Attendance Tracker</h1>
+            <p>Mark attendance for all members, leaders, and other roles (excluding Non-Members).</p>
 
-            <!-- Auto-submit Date Selector -->
-            <div class="date-selector">
-                <form method="POST" id="dateForm" style="margin: 0;">
-                    <label style="margin: 0; font-weight: 600;">Attendance Date:</label>
-                    <input type="date" 
-                           name="attendance_date" 
-                           value="<?php echo $attendance_date; ?>" 
-                           max="<?php echo date('Y-m-d'); ?>" 
-                           required>
-                </form>
-                <p style="margin: 10px 0 0 0; color: #666;">
-                    Currently viewing: <strong><?php echo date("l, F j, Y", strtotime($attendance_date)); ?></strong>
-                </p>
-            </div>
-
-            <!-- Stats -->
-            <div class="stats-container">
-                <div class="stat-card present"><h3>Present</h3><div class="number"><?php echo $presentCount; ?></div></div>
-                <div class="stat-card absent"><h3>Absent</h3><div class="number"><?php echo $absentCount; ?></div></div>
-                <div class="stat-card total"><h3>Total Members</h3><div class="number"><?php echo $totalMembers; ?></div></div>
-                <div class="stat-card"><h3>Not Marked</h3><div class="number"><?php echo $notMarked; ?></div></div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="button-group">
-                <button onclick="openModal('searchRecordsModal')" class="secondary-btn">Search & Records</button>
-                <button onclick="window.location.href='export_attendance.php'" class="export-btn">Export to Excel</button>
-            </div>
-
-            <!-- Attendance Table -->
-            <div class="attendance-table">
-                <form method="POST" id="attendanceForm">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Member Name</th>
-                                <th>Attendance Status</th>
-                                <th>Time In</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (count($members_data) > 0): ?>
-                                <?php foreach ($members_data as $index => $m): ?>
-                                    <tr>
-                                        <td><?php echo $index + 1; ?></td>
-                                        <td><strong><?php echo htmlspecialchars($m['name']); ?></strong></td>
-                                        <td>
-                                            <div class="radio-group">
-                                                <label class="present-label">
-                                                    <input type="radio" name="attendance[<?php echo $m['id']; ?>][status]" 
-                                                           value="Present" 
-                                                           <?php if ($m['status'] === "Present") echo "checked"; ?>
-                                                           onchange="toggleTimeInput(<?php echo $m['id']; ?>, 'Present'); updateButtonStyle(this)">
-                                                    Present
-                                                </label>
-                                                <label class="absent-label">
-                                                    <input type="radio" name="attendance[<?php echo $m['id']; ?>][status]" 
-                                                           value="Absent" 
-                                                           <?php if ($m['status'] === "Absent") echo "checked"; ?>
-                                                           onchange="toggleTimeInput(<?php echo $m['id']; ?>, 'Absent'); updateButtonStyle(this)">
-                                                    Absent
-                                                </label>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <input type="time" class="time-input" 
-                                                   id="time_<?php echo $m['id']; ?>" 
-                                                   name="attendance[<?php echo $m['id']; ?>][time_in]" 
-                                                   value="<?php echo $m['time_in'] ?? ''; ?>" 
-                                                   <?php echo ($m['status'] === "Present") ? "" : "disabled"; ?>>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="4">No members found.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                    <center><button type="submit" name="save_attendance" class="save-btn">Save Attendance</button></center>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ✅ Search & Records Modal -->
-    <div id="searchRecordsModal" class="modal">
-        <div class="modal-content large">
-            <span class="close" onclick="closeModal('searchRecordsModal')">&times;</span>
-            <h2>Search Attendance & Records</h2>
-            
-            <form method="GET" id="searchForm">
-                <label for="name">Member Name:</label>
-                <input type="text" name="search_name" value="<?php echo $search_name; ?>">
-
-                <label for="date">Date:</label>
-                <input type="date" 
-                       name="search_date" 
-                       value="<?php echo $search_date; ?>" 
-                       max="<?php echo date('Y-m-d'); ?>">
-
-                <input type="hidden" name="search_submitted" value="1">
-                <button type="submit">Search</button>
-            </form>
+            <?php if (isset($successMessage)): ?>
+                <div class="success-message"><?= $successMessage ?></div>
+            <?php elseif (isset($errorMessage)): ?>
+                <div class="error-message"><?= $errorMessage ?></div>
+            <?php endif; ?>
 
             <table>
-                <tr>
-                    <th>Member Name</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Time In</th>
-                </tr>
-                <?php
-                if (isset($_GET['search_submitted'])) {
-                    // Build query with optional filters
-                    $query = "
-                        SELECT CONCAT(u.firstname, ' ', u.lastname) AS full_name, 
-                               a.attendance_date, 
-                               a.status, 
-                               a.time_in
-                        FROM users u
-                        LEFT JOIN attendance a ON u.id = a.user_id
-                        WHERE 1=1
-                    ";
-                    $params = [];
-                    $types = "";
-
-                    if (!empty($search_name)) {
-                        $query .= " AND CONCAT(u.firstname, ' ', u.lastname) LIKE ?";
-                        $params[] = "%" . $search_name . "%";
-                        $types .= "s";
-                    }
-
-                    if (!empty($search_date)) {
-                        $query .= " AND a.attendance_date = ?";
-                        $params[] = $search_date;
-                        $types .= "s";
-                    }
-
-                    $query .= " ORDER BY a.attendance_date DESC, u.lastname ASC";
-
-                    $stmt = $mysqli->prepare($query);
-                    if (!empty($params)) {
-                        $stmt->bind_param($types, ...$params);
-                    }
-                    $stmt->execute();
-                    $search_result = $stmt->get_result();
-
-                    if ($search_result->num_rows > 0) {
-                        while ($row = $search_result->fetch_assoc()) {
-                            echo "<tr>
-                                    <td>" . htmlspecialchars($row['full_name']) . "</td>
-                                    <td>" . ($row['attendance_date'] ? htmlspecialchars($row['attendance_date']) : "Not Recorded") . "</td>
-                                    <td>" . ($row['status'] ?? "Not Marked") . "</td>
-                                    <td>" . ($row['time_in'] ?? "N/A") . "</td>
-                                  </tr>";
-                        }
-                    } else {
-                        echo "<tr><td colspan='4'>No records found</td></tr>";
-                    }
-
-                    $stmt->close();
-                }
-                ?>
+                <thead>
+                    <tr>
+                        <th>User Code</th>
+                        <th>Full Name</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if ($users->num_rows === 0): ?>
+                    <tr><td colspan="4">No users available for attendance.</td></tr>
+                <?php else: ?>
+                    <?php while ($row = $users->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['user_code']) ?></td>
+                            <td><?= htmlspecialchars($row['firstname'] . ' ' . $row['lastname']) ?></td>
+                            <td><?= htmlspecialchars($row['role_name']) ?></td>
+                            <td>
+                                <form method="POST" style="display:inline;">
+                                    <input type="hidden" name="user_code" value="<?= htmlspecialchars($row['user_code']) ?>">
+                                    <button type="submit" class="primary-btn">✅ Mark Present</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                <?php endif; ?>
+                </tbody>
             </table>
         </div>
     </div>
-
-    <script src="script.js?v=3"></script>
-    <script>
-    // Auto-submit forms when date changes
-    document.addEventListener("DOMContentLoaded", function() {
-        // Main date selector
-        const mainDateInput = document.querySelector('#dateForm input[type="date"]');
-        if (mainDateInput) {
-            mainDateInput.addEventListener("change", function() {
-                document.getElementById("dateForm").submit();
-            });
-        }
-
-        // Modal search date selector
-        const searchDateInput = document.querySelector('#searchForm input[type="date"]');
-        if (searchDateInput) {
-            searchDateInput.addEventListener("change", function() {
-                document.getElementById("searchForm").submit();
-            });
-        }
-
-        // Keep modal open after search
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('search_submitted')) {
-            openModal('searchRecordsModal');
-        }
-    });
-    </script>
+</div>
 </body>
 </html>
