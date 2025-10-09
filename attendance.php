@@ -56,7 +56,7 @@ $stmt->bind_param("s", $attendance_date);
 $stmt->execute();
 $members_result = $stmt->get_result();
 
-// Calculate stats
+// Stats
 $presentCount = 0;
 $absentCount = 0;
 $totalMembers = $members_result->num_rows;
@@ -103,19 +103,22 @@ $stmt->close();
             color: white;
         }
 
-        .present-label, .absent-label {
-            margin: 0 10px;
-            cursor: pointer;
+        .radio-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
         }
 
-        .radio-group input[type="radio"] {
-            margin-right: 6px;
+        .radio-group label {
+            cursor: pointer;
+            font-weight: 500;
         }
 
         .time-input {
             padding: 6px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            width: 100px;
         }
 
         .stats-container {
@@ -173,9 +176,9 @@ $stmt->close();
     </style>
 </head>
 <body>
-    <div class="main-layout">
-        <!-- Sidebar -->
-        <nav class="sidebar">
+<div class="main-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
     <div class="logo-section">
         <div class="logo-placeholder"><span><img src="images/ucf.png" alt="ucf_logo"></span></div>
         <div class="logo">Unity Christian Fellowship</div>
@@ -218,118 +221,118 @@ $stmt->close();
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
-            <li><a href="promotion_logs.php"><span>🕊️</span> Promotion Logs</a></li>
+            <li><a href="promotion_logs.php" ><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
     </ul>
 </nav>
 
+    <!-- Content -->
+    <div class="content-area">
+        <div class="attendance-container">
+            <h1>👥 Attendance Management</h1>
+            <p>Mark attendance for all roles except Non-Members.</p>
 
-        <!-- Content -->
-        <div class="content-area">
-            <div class="attendance-container">
-                <h1>👥 Attendance Management</h1>
-                <p>Mark attendance for all roles except Non-Members.</p>
+            <?php if (isset($success)): ?>
+                <div class="success-message"><?= $success ?></div>
+            <?php endif; ?>
 
-                <?php if (isset($success)): ?>
-                    <div class="success-message"><?= $success ?></div>
-                <?php endif; ?>
-
-                <!-- Date Selector -->
-                <div class="date-selector">
-                    <form method="POST" id="dateForm">
-                        <label><strong>Attendance Date:</strong></label>
-                        <input type="date" 
-                               name="attendance_date" 
-                               value="<?= $attendance_date ?>" 
-                               max="<?= date('Y-m-d'); ?>" required>
-                    </form>
-                    <p style="color:#666;">Currently viewing: 
-                        <strong><?= date("l, F j, Y", strtotime($attendance_date)) ?></strong>
-                    </p>
-                </div>
-
-                <!-- Stats -->
-                <div class="stats-container">
-                    <div class="stat-card present"><h3>Present</h3><div class="number"><?= $presentCount ?></div></div>
-                    <div class="stat-card absent"><h3>Absent</h3><div class="number"><?= $absentCount ?></div></div>
-                    <div class="stat-card total"><h3>Total Members</h3><div class="number"><?= $totalMembers ?></div></div>
-                    <div class="stat-card"><h3>Not Marked</h3><div class="number"><?= $notMarked ?></div></div>
-                </div>
-
-                <!-- Attendance Table -->
-                <form method="POST" id="attendanceForm">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>User Code</th>
-                                <th>Member Name</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Time In</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (count($members_data) > 0): ?>
-                                <?php foreach ($members_data as $index => $m): ?>
-                                    <tr>
-                                        <td><?= $index + 1 ?></td>
-                                        <td><strong><?= htmlspecialchars($m['user_code']) ?></strong></td>
-                                        <td><?= htmlspecialchars($m['name']) ?></td>
-                                        <td><?= htmlspecialchars($m['role_name']) ?></td>
-                                        <td>
-                                            <div class="radio-group">
-                                                <label class="present-label">
-                                                    <input type="radio" name="attendance[<?= $m['user_code'] ?>][status]" 
-                                                           value="Present" 
-                                                           <?= ($m['status'] === "Present") ? "checked" : "" ?>
-                                                           onchange="toggleTimeInput('<?= $m['user_code'] ?>', 'Present')">
-                                                    Present
-                                                </label>
-                                                <label class="absent-label">
-                                                    <input type="radio" name="attendance[<?= $m['user_code'] ?>][status]" 
-                                                           value="Absent" 
-                                                           <?= ($m['status'] === "Absent") ? "checked" : "" ?>
-                                                           onchange="toggleTimeInput('<?= $m['user_code'] ?>', 'Absent')">
-                                                    Absent
-                                                </label>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <input type="time" class="time-input" 
-                                                   id="time_<?= $m['user_code'] ?>" 
-                                                   name="attendance[<?= $m['user_code'] ?>][time_in]" 
-                                                   value="<?= $m['time_in'] ?? '' ?>" 
-                                                   <?= ($m['status'] === "Present") ? "" : "disabled" ?>>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="6">No members found.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                    <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
+            <!-- Date Selector -->
+            <div class="date-selector">
+                <form method="POST" id="dateForm" onsubmit="return false;">
+                    <label><strong>Attendance Date:</strong></label>
+                    <input type="date"
+                           name="attendance_date"
+                           value="<?= $attendance_date ?>"
+                           max="<?= date('Y-m-d'); ?>" required>
                 </form>
+                <p style="color:#666;">Currently viewing:
+                    <strong><?= date("l, F j, Y", strtotime($attendance_date)) ?></strong>
+                </p>
             </div>
+
+            <!-- Stats -->
+            <div class="stats-container">
+                <div class="stat-card present"><h3>Present</h3><div class="number"><?= $presentCount ?></div></div>
+                <div class="stat-card absent"><h3>Absent</h3><div class="number"><?= $absentCount ?></div></div>
+                <div class="stat-card total"><h3>Total Members</h3><div class="number"><?= $totalMembers ?></div></div>
+                <div class="stat-card"><h3>Not Marked</h3><div class="number"><?= $notMarked ?></div></div>
+            </div>
+
+            <!-- Attendance Table -->
+            <form method="POST" id="attendanceForm">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User Code</th>
+                        <th>Member Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Time In</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (count($members_data) > 0): ?>
+                        <?php foreach ($members_data as $index => $m): ?>
+                            <tr>
+                                <td><?= $index + 1 ?></td>
+                                <td><strong><?= htmlspecialchars($m['user_code']) ?></strong></td>
+                                <td><?= htmlspecialchars($m['name']) ?></td>
+                                <td><?= htmlspecialchars($m['role_name']) ?></td>
+                                <td>
+                                    <div class="radio-group">
+                                        <label>
+                                            <input type="radio" name="attendance[<?= $m['user_code'] ?>][status]"
+                                                   value="Present"
+                                                   <?= ($m['status'] === "Present") ? "checked" : "" ?>
+                                                   onclick="toggleTimeInput('<?= $m['user_code'] ?>', true)">
+                                            Present
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="attendance[<?= $m['user_code'] ?>][status]"
+                                                   value="Absent"
+                                                   <?= ($m['status'] === "Absent") ? "checked" : "" ?>
+                                                   onclick="toggleTimeInput('<?= $m['user_code'] ?>', false)">
+                                            Absent
+                                        </label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="time" class="time-input"
+                                           id="time_<?= $m['user_code'] ?>"
+                                           name="attendance[<?= $m['user_code'] ?>][time_in]"
+                                           value="<?= $m['time_in'] ?? '' ?>"
+                                           <?= ($m['status'] === "Present") ? "" : "disabled" ?>>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="6">No members found.</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+                <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
+            </form>
         </div>
     </div>
+</div>
 
 <script>
-function toggleTimeInput(userCode, status) {
+function toggleTimeInput(userCode, isPresent) {
     const timeInput = document.getElementById('time_' + userCode);
-    if (status === 'Present') {
+    if (isPresent) {
         timeInput.disabled = false;
-        timeInput.value = timeInput.value || new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        if (!timeInput.value)
+            timeInput.value = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     } else {
         timeInput.disabled = true;
         timeInput.value = '';
     }
 }
 
-// Auto-submit when date changes
+// Auto-submit date form only when the date field changes
 document.addEventListener("DOMContentLoaded", () => {
     const dateInput = document.querySelector('#dateForm input[type="date"]');
     if (dateInput) {
