@@ -3,24 +3,33 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER]);
 
-$current_user_code = isset($_SESSION['user_code']) && !empty($_SESSION['user_code'])
-    ? $_SESSION['user_code']
-    : null;
+$current_user_code = $_SESSION['user_code'] ?? null;
 
-// Determine attendance date
-$attendance_date = $_POST['attendance_date'] ?? ($_SESSION['attendance_date'] ?? date('Y-m-d'));
+// ✅ Ensure one unique attendance record per (user_code, attendance_date)
+$mysqli->query("
+    ALTER TABLE attendance 
+    ADD UNIQUE KEY IF NOT EXISTS unique_user_date (user_code, attendance_date)
+");
 
-// Handle saving
+// ✅ Determine and store selected date
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_date'])) {
+    $attendance_date = $_POST['attendance_date'];
+    $_SESSION['attendance_date'] = $attendance_date;
+} else {
+    $attendance_date = $_SESSION['attendance_date'] ?? date('Y-m-d');
+}
+
+// ✅ Handle saving attendance
 $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
-    $attendance_date = $_POST['attendance_date'] ?? $attendance_date;
+    $attendance_date = $_POST['attendance_date'] ?? date('Y-m-d');
 
     if (!empty($_POST['attendance']) && is_array($_POST['attendance'])) {
         foreach ($_POST['attendance'] as $user_code => $data) {
             $status = $data['status'] ?? null;
             $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
-            // Verify user exists
+            // Ensure the user exists
             $verify = $mysqli->prepare("SELECT user_code FROM users WHERE user_code = ?");
             $verify->bind_param("s", $user_code);
             $verify->execute();
@@ -46,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
     }
 }
 
-// Fetch users except non-members
+// ✅ Fetch users except Non-Members (role_id = 4)
 $sql = "
 SELECT 
     u.user_code,
@@ -157,7 +166,6 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
     </ul>
 </nav>
 
-
     <div class="content-area">
         <div class="attendance-container">
             <h1>👥 Attendance Management</h1>
@@ -172,7 +180,7 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
                 <button type="submit" name="view_attendance" class="save-btn" style="padding:8px 12px;">View</button>
             </form>
 
-            <!-- Attendance Form -->
+            <!-- Attendance Table -->
             <form method="POST" style="margin-top:20px;">
                 <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
                 <table>
@@ -226,7 +234,7 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 <script>
 function pad(num){return num.toString().padStart(2,'0');}
 
-// Update time + summary on click
+// Update status buttons + time input
 document.addEventListener('click', e => {
     if (e.target.matches('.present-btn, .absent-btn')) {
         const btn = e.target;
@@ -255,6 +263,7 @@ document.addEventListener('click', e => {
     }
 });
 
+// Live counter
 function updateSummary() {
     const rows = [...document.querySelectorAll('tbody tr[data-user]')];
     let present = 0, absent = 0, total = rows.length;
