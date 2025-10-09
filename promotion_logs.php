@@ -68,6 +68,7 @@ $result = $mysqli->query("
         <li class="nav-divider"></li>
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
+            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
             <li><a href="promotion_page.php"><span>🕊️</span> Promotion Panel</a></li>
             <li><a href="promotion_logs.php" class="active"><span>🕊️</span> Promotion Logs</a></li>
         <?php endif; ?>
