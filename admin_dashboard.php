@@ -156,7 +156,7 @@ $result = $stmt->get_result();
                     <?php else: ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
-                                <td><?= $row['id'] ?></td>
+                                <td><?= htmlspecialchars($row['user_code']) ?></td>
                                 <td><?= htmlspecialchars($row['firstname'] . ' ' . $row['lastname']) ?></td>
                                 <td><?= htmlspecialchars($row['email']) ?></td>
                                 <td><?= htmlspecialchars($row['contact']) ?></td>
