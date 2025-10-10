@@ -5,15 +5,15 @@
 require __DIR__ . '/database.php';
 
 // --- Admin Account Details ---
-$firstname     = 'UCF';
-$lastname      = 'Account';
+$firstname     = 'Gabriel';
+$lastname      = 'Santos';
 $suffix        = '';
-$contact       = '0931000000';
+$contact       = '0931333333';
 $age           = 21;
-$user_address  = 'Account Address';
-$email         = 'Account@ucf.com';
-$password      = 'Account@1234';  // You can change this
-$role_id       = 3;             //
+$user_address  = 'Cabuyaoi';
+$email         = 'gabriel@ucf.com';
+$password      = 'gabriel@1234';  // You can change this
+$role_id       = 2;             //
 
 // --- Hash the password ---
 $pwd_hash = password_hash($password, PASSWORD_DEFAULT);
