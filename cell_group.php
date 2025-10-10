@@ -3,7 +3,7 @@ include 'database.php';
 include 'auth_check.php';
 
 // Ensure user is logged in and has a role
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role_id'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role_id'])) {
     header("Location: login.php");
     exit;
 }
@@ -11,22 +11,25 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role_id'])) {
 // Allow only Admin, Leader, or Member roles
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_MEMBER]);
 
-$user_role = $_SESSION['role_id'];
+$user_role = $_SESSION['user_role_id'];
 $user_id = $_SESSION['user_id'];
 $today = date('Y-m-d');
 
-
-$today = date('Y-m-d');
-
 if ($user_role == ROLE_LEADER) {
-    // Get leader_id for logged in leader
-    $leaderQuery = $mysqli->prepare("SELECT leader_id FROM leaders WHERE user_id = ?");
+    // ✅ Get leader info based on logged-in user’s email (not user_id)
+    $leaderQuery = $mysqli->prepare("SELECT leader_id, leader_name FROM leaders WHERE email = (SELECT email FROM users WHERE id = ?)");
     $leaderQuery->bind_param("i", $user_id);
     $leaderQuery->execute();
     $leader = $leaderQuery->get_result()->fetch_assoc();
-    $leader_id = $leader['leader_id'];
 
-    // Fetch members assigned to this leader
+    if (!$leader) {
+        die("❌ This leader is not registered in the leaders table.");
+    }
+
+    $leader_id = $leader['leader_id'];
+    $leader_name = $leader['leader_name'];
+
+    // ✅ Fetch members assigned to this leader
     $members = $mysqli->query("
         SELECT id, firstname, lastname, user_code
         FROM users 
@@ -36,14 +39,14 @@ if ($user_role == ROLE_LEADER) {
 }
 
 if ($user_role == ROLE_MEMBER) {
-    // Fetch the member’s leader_id
+    // ✅ Fetch member’s assigned leader_id
     $memberLeaderQuery = $mysqli->prepare("SELECT leader_id FROM users WHERE id = ?");
     $memberLeaderQuery->bind_param("i", $user_id);
     $memberLeaderQuery->execute();
     $leader = $memberLeaderQuery->get_result()->fetch_assoc();
-    $leader_id = $leader['leader_id'];
+    $leader_id = $leader['leader_id'] ?? null;
 
-    // Get leader info and group members
+    // ✅ Get leader info and group members
     $leaderInfo = $mysqli->query("SELECT leader_name FROM leaders WHERE leader_id = $leader_id")->fetch_assoc();
     $members = $mysqli->query("
         SELECT firstname, lastname, user_code 
@@ -53,12 +56,12 @@ if ($user_role == ROLE_MEMBER) {
     ")->fetch_all(MYSQLI_ASSOC);
 }
 
-// Handle attendance saving (Leader only)
+// ✅ Handle attendance saving (Leader only)
 if ($user_role == ROLE_LEADER && isset($_POST['save_cell_attendance'])) {
     $activity_name = trim($_POST['activity_name']);
     $attendance_date = $_POST['attendance_date'];
 
-    // Insert or update activity
+    // ✅ Insert new cell group activity
     $stmt = $mysqli->prepare("
         INSERT INTO cell_group_attendance (leader_id, activity_name, attendance_date)
         VALUES (?, ?, ?)
@@ -68,7 +71,7 @@ if ($user_role == ROLE_LEADER && isset($_POST['save_cell_attendance'])) {
     $stmt->execute();
     $attendance_id = $stmt->insert_id ?: $mysqli->insert_id;
 
-    // Save member attendance records
+    // ✅ Save member attendance records
     foreach ($_POST['attendance'] as $member_id => $data) {
         $status = $data['status'] ?? 'Absent';
         $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
@@ -87,7 +90,6 @@ if ($user_role == ROLE_LEADER && isset($_POST['save_cell_attendance'])) {
     exit;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,7 +125,7 @@ th { background:#0271c0; color:#fff; }
 <?php endif; ?>
 
 <?php if ($user_role == ROLE_LEADER): ?>
-    <h1>📋 Cell Group Attendance (Leader View)</h1>
+    <h1>📋 <?= htmlspecialchars($leader_name) ?>’s Cell Group</h1>
     <form method="POST">
         <label><strong>Activity Name:</strong></label>
         <input type="text" name="activity_name" placeholder="e.g., Foundation Day" required>
