@@ -23,6 +23,13 @@
             <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism_records.php' ? 'active' : '' ?>"><span>📖</span> Evangelism Records</a></li>
         <?php endif; ?>
 
+         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Cell Groups</li>
+            <li><a href="cell_group.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group.php' ? 'active' : '' ?>"><span>👥</span> Cell Group</a></li>
+        <?php endif; ?>
+
+
         <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
         <li class="nav-divider"></li>
             <li class="nav-section">Announcements</li>
