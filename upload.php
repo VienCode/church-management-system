@@ -223,7 +223,7 @@ $posts_result = $posts_query->get_result();
 <script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
-    <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <div class="content-area">
         <div class="content-header">

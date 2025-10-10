@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-   <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Content -->
     <div class="content-area">

@@ -71,7 +71,7 @@ $result = $stmt->get_result();
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-   <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
 
     <!-- Content Area -->

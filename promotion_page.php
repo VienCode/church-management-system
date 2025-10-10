@@ -91,7 +91,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-    <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Content Area -->
     <div class="content-area">

@@ -95,9 +95,7 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-   <?php include __DIR__ . '/../includes/sidebar.php'; ?>
-
-
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="content-area">

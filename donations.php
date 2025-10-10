@@ -118,7 +118,7 @@ while ($row = $chart_data->fetch_assoc()) {
 <body>
 <div class="main-layout">
     <!-- Sidebar Navbar -->
-   <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Content Area -->
     <div class="content-area">
