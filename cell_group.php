@@ -3,8 +3,15 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_MEMBER]);
 
-$user_role = $_SESSION['user_role_id'];
-$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['user_role_id'] ?? $_SESSION['role_id'] ?? null;
+$user_id = $_SESSION['user_id'] ?? null;
+
+// Redirect to login if session expired or missing
+if (!$user_role || !$user_id) {
+    header("Location: login.php");
+    exit;
+}
+
 $today = date('Y-m-d');
 
 // Fetch role-based cell group data
