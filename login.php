@@ -33,9 +33,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // Correct password check
     if ($user && password_verify($password, $user["pwd_hash"])) {
         $_SESSION["user_id"] = $user["id"];
-        $_SESSION["firstname"] = $user["firstname"];
-        $_SESSION["lastname"] = $user["lastname"];
-        $_SESSION["role_id"] = $user["role_id"];
+        $_SESSION["user_code"] = $user["user_code"] ?? null;
+        $_SESSION["user_name"] = $user["firstname"] . " " . $user["lastname"];
+        $_SESSION["user_role_id"] = $user["role_id"];
+
 
         switch ($_SESSION["role_id"]) {
             case 1: // Admin
