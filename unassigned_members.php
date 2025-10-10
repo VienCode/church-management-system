@@ -3,7 +3,7 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]);
 
-// Fetch all unassigned members (role_id = 3, leader_id IS NULL, but have attendance records)
+// Fetch all unassigned members (role_id = 3, leader_id IS NULL, with attendance)
 $sql = "
     SELECT id, user_code, firstname, lastname, email, contact 
     FROM users
@@ -15,7 +15,7 @@ $sql = "
 $result = $mysqli->query($sql);
 $members = $result->fetch_all(MYSQLI_ASSOC);
 
-// Fetch available leaders
+// Fetch leaders
 $leaders = $mysqli->query("
     SELECT leader_id, leader_name 
     FROM leaders 
@@ -46,6 +46,7 @@ $leaders = $mysqli->query("
     margin-bottom: 15px;
     font-weight: bold;
     display: none;
+    transition: all 0.5s ease;
 }
 select, button {
     padding: 8px 12px;
@@ -87,6 +88,10 @@ th {
     transform: scale(1.3);
     cursor: pointer;
 }
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
 </style>
 </head>
 
@@ -126,17 +131,27 @@ th {
                                 <th>Full Name</th>
                                 <th>Contact</th>
                                 <th>Email</th>
+                                <th>Assign</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="memberTableBody">
                             <?php $i=1; foreach ($members as $m): ?>
-                                <tr>
+                                <tr id="row_<?= $m['id'] ?>">
                                     <td><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="member-checkbox checkbox"></td>
                                     <td><?= $i++ ?></td>
                                     <td><?= htmlspecialchars($m['user_code']) ?></td>
                                     <td><?= htmlspecialchars($m['firstname'].' '.$m['lastname']) ?></td>
                                     <td><?= htmlspecialchars($m['contact']) ?></td>
                                     <td><?= htmlspecialchars($m['email']) ?></td>
+                                    <td>
+                                        <select class="singleLeaderSelect">
+                                            <option value="" disabled selected>Select Leader</option>
+                                            <?php foreach ($leaders as $l): ?>
+                                                <option value="<?= $l['leader_id'] ?>"><?= htmlspecialchars($l['leader_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="button" class="assign-btn singleAssignBtn" data-member="<?= $m['id'] ?>">Assign</button>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -148,26 +163,51 @@ th {
 </div>
 
 <script>
-// Select all checkboxes
+// ✅ Select all checkboxes
 document.getElementById('selectAll')?.addEventListener('change', function() {
     const checked = this.checked;
     document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = checked);
 });
 
-// Handle bulk assign
+// ✅ Single Assign via AJAX
+document.querySelectorAll('.singleAssignBtn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const memberId = btn.dataset.member;
+        const leaderId = btn.previousElementSibling.value;
+        const row = document.getElementById('row_' + memberId);
+        const msgBox = document.getElementById('successMessage');
+
+        if (!leaderId) return alert('⚠️ Please select a leader.');
+
+        const formData = new FormData();
+        formData.append('leader_id', leaderId);
+        formData.append('member_ids', JSON.stringify([memberId]));
+
+        const response = await fetch('unassigned_members_assign.php', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            msgBox.textContent = '✅ ' + result.message;
+            msgBox.style.display = 'block';
+            row.classList.add('fade-out');
+            setTimeout(() => row.remove(), 800);
+        } else {
+            alert('❌ ' + result.message);
+        }
+    });
+});
+
+// ✅ Bulk Assign via AJAX
 document.getElementById('bulkAssignBtn')?.addEventListener('click', async () => {
     const selectedMembers = [...document.querySelectorAll('.member-checkbox:checked')].map(cb => cb.value);
     const leaderId = document.getElementById('bulkLeaderSelect').value;
     const msgBox = document.getElementById('successMessage');
 
-    if (!leaderId) {
-        alert('⚠️ Please select a leader first.');
-        return;
-    }
-    if (selectedMembers.length === 0) {
-        alert('⚠️ Please select at least one member to assign.');
-        return;
-    }
+    if (!leaderId) return alert('⚠️ Please select a leader.');
+    if (selectedMembers.length === 0) return alert('⚠️ Please select at least one member.');
 
     const formData = new FormData();
     formData.append('leader_id', leaderId);
@@ -177,13 +217,20 @@ document.getElementById('bulkAssignBtn')?.addEventListener('click', async () => 
         method: 'POST',
         body: formData
     });
-
     const result = await response.json();
 
     if (result.success) {
-        msgBox.textContent = `✅ ${result.message}`;
+        msgBox.textContent = '✅ ' + result.message;
         msgBox.style.display = 'block';
-        setTimeout(() => location.reload(), 1500);
+
+        // Remove assigned rows with fade-out
+        selectedMembers.forEach(id => {
+            const row = document.getElementById('row_' + id);
+            if (row) {
+                row.classList.add('fade-out');
+                setTimeout(() => row.remove(), 800);
+            }
+        });
     } else {
         alert('❌ ' + result.message);
     }

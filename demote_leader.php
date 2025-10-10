@@ -44,10 +44,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     // 3️⃣ If the leader exists, unassign all their members
     if ($leader) {
         $leader_id = $leader["leader_id"];
+        // Unassign all members who were under this leader
         $unassign = $mysqli->prepare("UPDATE users SET leader_id = NULL WHERE leader_id = ?");
-        $unassign->bind_param("i", $leader_id);
+        $unassign->bind_param("i", $leader_id); // use the demoted leader's ID
         $unassign->execute();
         $unassign->close();
+
 
         // 4️⃣ Delete leader record
         $delete = $mysqli->prepare("DELETE FROM leaders WHERE leader_id = ?");
