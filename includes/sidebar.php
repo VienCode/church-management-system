@@ -58,7 +58,7 @@
             <li class="nav-section">🧩 System</li>
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'admin_dashboard.php' ? 'active' : '' ?>"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="promotion_logs.php" class="<?= basename($_SERVER['PHP_SELF']) == 'promotion_logs.php' ? 'active' : '' ?>"><span>📜</span> Promotion Logs</a></li>
+            <li><a href="cell_groups_admin.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_groups_admin.php' ? 'active' : '' ?>"><span>📜</span> Cell Group Management</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
