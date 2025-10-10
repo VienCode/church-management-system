@@ -137,10 +137,19 @@ $result = $stmt->get_result();
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
                                         <button type="submit" class="secondary-btn" onclick="return confirm('Reset password to default?')">🔒</button>
                                     </form>
-                                    <form method="POST" action="assign_leader.php" style="display:inline;">
-                                        <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="secondary-btn" onclick="return confirm('Promote this user to Leader?')">⭐ Make Leader</button>
-                                    </form>
+                                    <?php if ($row['role_id'] == 2): ?>
+                                        <!-- DEMOTE BUTTON -->
+                                        <form method="POST" action="demote_leader.php" style="display:inline;">
+                                            <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                            <button type="submit" class="delete-btn" onclick="return confirm('Demote this leader back to Member?')">⬇️ Demote</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <!-- PROMOTE BUTTON -->
+                                        <form method="POST" action="assign_leader.php" style="display:inline;">
+                                            <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                            <button type="submit" class="secondary-btn" onclick="return confirm('Promote this user to Leader?')">⭐ Make Leader</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
