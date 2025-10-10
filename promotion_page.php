@@ -97,10 +97,6 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
     <div class="content-area">
         <div class="promotion-container">
             <h1>🕊️ Promotion Panel</h1>
-            
-            <form method="POST" action="promotion_auto.php" style="margin-top: 20px;">
-                <button type="submit" class="primary-btn">🚀 Promote All Eligible Members</button>
-            </form>
 
             <?php if (isset($_SESSION['promotion_result'])): ?>
                 <div class="success-message" style="margin:15px 0;">
