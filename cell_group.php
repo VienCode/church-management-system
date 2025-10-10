@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role_id'])) {
 // Allow only Admin, Leader, or Member roles
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_MEMBER]);
 
-$user_role = $_SESSION['user_role_id'];
+$user_role = $_SESSION['role_id'];
 $user_id = $_SESSION['user_id'];
 $today = date('Y-m-d');
 
