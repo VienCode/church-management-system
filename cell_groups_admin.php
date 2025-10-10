@@ -19,18 +19,23 @@ $sql = "
     SELECT 
         l.leader_id,
         l.leader_name,
-        u.email AS leader_email,
-        COUNT(DISTINCT cga.id) AS total_activities,
-        MAX(cga.attendance_date) AS last_activity,
-        COUNT(DISTINCT m.id) AS member_count
+        l.email AS leader_email,
+        l.contact AS leader_contact,
+        u.user_code,
+        CONCAT(u.firstname, ' ', u.lastname) AS member_name,
+        u.email AS member_email,
+        u.role_id
     FROM leaders l
-    LEFT JOIN users u ON l.user_id = u.id
-    LEFT JOIN users m ON m.leader_id = l.leader_id
-    LEFT JOIN cell_group_attendance cga ON cga.leader_id = l.leader_id
-    $where
-    GROUP BY l.leader_id, l.leader_name, u.email
-    ORDER BY l.leader_name ASC
+    LEFT JOIN users u 
+        ON u.leader_id = l.leader_id
+    ORDER BY l.leader_name ASC, u.lastname ASC
 ";
+
+if (isset($_GET['leader_id']) && $_GET['leader_id'] !== 'all') {
+    $sql .= " WHERE l.leader_id = " . intval($_GET['leader_id']);
+}
+
+
 
 $stmt = $mysqli->prepare($sql);
 if (!empty($params)) $stmt->bind_param($types, ...$params);
