@@ -115,6 +115,7 @@ th { background:#0271c0; color:#fff; }
 </style>
 </head>
 
+<script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
    <?php include __DIR__ . '/includes/sidebar.php'; ?>

@@ -82,6 +82,8 @@ th { background:#0271c0; color:white; }
 .summary div { background:#f6f8fb; padding:10px 20px; border-radius:8px; font-weight:600; }
 </style>
 </head>
+
+<script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
    <?php include __DIR__ . '/includes/sidebar.php'; ?>

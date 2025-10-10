@@ -17,19 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
         $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
         if ($status) {
-            // Insert or update attendance record
             $stmt = $mysqli->prepare("
                 INSERT INTO evangelism_attendance (non_member_id, attendance_date, status, time_in, recorded_by)
                 VALUES (?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE 
-                    status = VALUES(status),
-                    time_in = VALUES(time_in),
-                    recorded_by = VALUES(recorded_by)
+                    status=VALUES(status),
+                    time_in=VALUES(time_in),
+                    recorded_by=VALUES(recorded_by)
             ");
             $stmt->bind_param("issss", $id, $attendance_date, $status, $time_in, $current_user_code);
             $stmt->execute();
 
-            // Update total attendance count for Present members
             if ($status === 'Present') {
                 $mysqli->query("
                     UPDATE non_members 
@@ -46,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
     exit();
 }
 
-// Fetch all non-members
+// Fetch non-members
 $result = $mysqli->query("
     SELECT id, firstname, lastname, contact, email, attendances_count
     FROM non_members
@@ -54,6 +52,10 @@ $result = $mysqli->query("
 ");
 
 $non_members = $result->fetch_all(MYSQLI_ASSOC);
+
+// Check for promotion eligibility
+$eligible = array_filter($non_members, fn($m) => $m['attendances_count'] >= 10);
+$eligibleCount = count($eligible);
 ?>
 
 <!DOCTYPE html>
@@ -68,42 +70,50 @@ $non_members = $result->fetch_all(MYSQLI_ASSOC);
     max-width:1100px; margin:30px auto; box-shadow:0 2px 10px rgba(0,0,0,.08);
 }
 .success { background:#e6ffed; color:#256029; padding:10px; border-radius:8px; margin-bottom:12px; font-weight:600; }
-.promo-alert { background:#fff3cd; color:#856404; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffeeba; display:none; }
+.promo-alert { background:#fff3cd; color:#856404; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffeeba; }
 .present-btn, .absent-btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
 .present-btn { background:#28a745; color:white; }
 .absent-btn { background:#dc3545; color:white; }
 .active { box-shadow:0 2px 6px rgba(0,0,0,0.15); transform:translateY(-1px); }
 .time-input { border:1px solid #ccc; padding:6px; border-radius:6px; width:110px; text-align:center; }
 .save-btn { background:#0271c0; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:700; margin-top:16px; }
+.save-btn:hover { background:#02589b; }
+.summary { margin-top:18px; display:flex; gap:10px; justify-content:center; }
+.summary div { background:#f6f8fb; padding:10px 18px; border-radius:8px; font-weight:600; }
+input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 </style>
 </head>
 
 <script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
-  <?php include __DIR__ . '/includes/sidebar.php'; ?>
+    <?php include 'sidebar.php'; ?>
+
     <div class="content-area">
         <div class="evangelism-container">
-            <h1>🕊️ Evangelism Attendance</h1>
-            <p>Track attendance for Non-Members (Guests).</p>
-
-            <!-- ✅ Shared Promotion Alert -->
-            <div id="promotionAlert" class="promo-alert">
-                <strong>🎉 <span id="promoCount"></span> Non-Member(s) eligible for promotion!</strong><br>
-                <a href="promotion_page.php" class="primary-btn" style="margin-top:10px; display:inline-block;">Review Now →</a>
-            </div>
+            <h1>🌱 Evangelism Attendance</h1>
+            <p>Track attendance for all <strong>Non-Members</strong> (Guests).</p>
 
             <?php if (isset($_SESSION['evangelism_success'])): ?>
                 <div class="success"><?= $_SESSION['evangelism_success'] ?></div>
                 <?php unset($_SESSION['evangelism_success']); ?>
             <?php endif; ?>
 
+            <?php if ($eligibleCount > 0): ?>
+                <div class="promo-alert">
+                    <strong>🎉 <?= $eligibleCount ?> Non-Member<?= $eligibleCount > 1 ? 's' : '' ?> eligible for promotion!</strong><br>
+                    <a href="promotion_page.php" class="save-btn" style="margin-top:10px; display:inline-block;">Review Now →</a>
+                </div>
+            <?php endif; ?>
+
+            <!-- Date Selection -->
             <form method="POST">
                 <label><strong>Attendance Date:</strong></label>
                 <input type="date" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
                 <button type="submit" name="view_evangelism" class="save-btn" style="padding:8px 12px;">View</button>
             </form>
 
+            <!-- Attendance Table -->
             <form method="POST" style="margin-top:20px;">
                 <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
                 <table>
@@ -140,6 +150,14 @@ $non_members = $result->fetch_all(MYSQLI_ASSOC);
                 </table>
                 <center><button type="submit" name="save_evangelism" class="save-btn">💾 Save Evangelism Attendance</button></center>
             </form>
+
+            <!-- Summary Section -->
+            <div class="summary" id="liveSummary">
+                <div id="sumPresent">✅ Present: 0</div>
+                <div id="sumAbsent">❌ Absent: 0</div>
+                <div id="sumNot">⏳ Not Marked: <?= count($non_members) ?></div>
+                <div id="sumTotal">👥 Total: <?= count($non_members) ?></div>
+            </div>
         </div>
     </div>
 </div>
@@ -147,7 +165,6 @@ $non_members = $result->fetch_all(MYSQLI_ASSOC);
 <script>
 function pad(num){return num.toString().padStart(2,'0');}
 
-// ✅ Handle marking attendance
 document.addEventListener('click', e => {
     if (e.target.matches('.present-btn, .absent-btn')) {
         const row = e.target.closest('tr');
@@ -171,22 +188,24 @@ document.addEventListener('click', e => {
             absentBtn.classList.add('active');
             presentBtn.classList.remove('active');
         }
+        updateSummary();
     }
 });
 
-// ✅ Shared Promotion Alert (AJAX)
-document.addEventListener('DOMContentLoaded', () => {
-    fetch('check_promotions.php')
-        .then(res => res.json())
-        .then(data => {
-            if (data.count > 0) {
-                document.getElementById('promotionAlert').style.display = 'block';
-                document.getElementById('promoCount').textContent = data.count;
-            }
-        })
-        .catch(err => console.error('Promotion check failed:', err));
-});
+function updateSummary() {
+    const rows = [...document.querySelectorAll('tbody tr[data-id]')];
+    let present = 0, absent = 0, total = rows.length;
+    rows.forEach(r => {
+        const status = r.querySelector('input[type=hidden]').value;
+        if (status === 'Present') present++;
+        else if (status === 'Absent') absent++;
+    });
+    const not = total - (present + absent);
+    document.getElementById('sumPresent').textContent = '✅ Present: ' + present;
+    document.getElementById('sumAbsent').textContent = '❌ Absent: ' + absent;
+    document.getElementById('sumNot').textContent = '⏳ Not Marked: ' + not;
+    document.getElementById('sumTotal').textContent = '👥 Total: ' + total;
+}
 </script>
-
 </body>
 </html>
