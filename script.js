@@ -408,3 +408,44 @@ function setInitialTimeInputState() {
 
 // Run once the page has fully loaded
 document.addEventListener('DOMContentLoaded', setInitialTimeInputState);
+
+// Live Badge Updater for Promotion & Evangelism
+function updateBadges() {
+    // Promotion badge (eligible for promotion)
+    fetch('get_promotion_count.php')
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById('promoBadge');
+            if (badge) {
+                if (data.count > 0) {
+                    badge.style.display = 'inline-block';
+                    badge.textContent = data.count;
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        })
+        .catch(err => console.error('Promotion badge update failed:', err));
+
+    // Evangelism badge (total non-members)
+    fetch('get_evangelism_count.php')
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById('evangelismBadge');
+            if (badge) {
+                if (data.count > 0) {
+                    badge.style.display = 'inline-block';
+                    badge.textContent = data.count;
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        })
+        .catch(err => console.error('Evangelism badge update failed:', err));
+}
+
+// Run immediately and every 30 seconds
+document.addEventListener('DOMContentLoaded', () => {
+    updateBadges();
+    setInterval(updateBadges, 30000); // every 30 seconds
+});
