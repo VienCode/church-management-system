@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
         $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
         if ($status) {
+            // Insert or update evangelism attendance
             $stmt = $mysqli->prepare("
                 INSERT INTO evangelism_attendance (non_member_id, attendance_date, status, time_in, recorded_by)
                 VALUES (?, ?, ?, ?, ?)
@@ -28,18 +29,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
             $stmt->bind_param("issss", $id, $attendance_date, $status, $time_in, $current_user_code);
             $stmt->execute();
 
+            // ✅ FIX: Only increment attendance count once per date
             if ($status === 'Present') {
-                $mysqli->query("
-                    UPDATE non_members 
-                    SET attendances_count = attendances_count + 1,
-                        last_attended = '$attendance_date'
-                    WHERE id = $id
+                // Check if a Present record already exists for this date
+                $check = $mysqli->prepare("
+                    SELECT 1 
+                    FROM evangelism_attendance 
+                    WHERE non_member_id = ? 
+                    AND attendance_date = ? 
+                    AND status = 'Present'
+                    LIMIT 1
                 ");
+                $check->bind_param("is", $id, $attendance_date);
+                $check->execute();
+                $exists = $check->get_result()->num_rows > 0;
+                $check->close();
+
+                if (!$exists) {
+                    $update = $mysqli->prepare("
+                        UPDATE non_members 
+                        SET attendances_count = attendances_count + 1,
+                            last_attended = ?
+                        WHERE id = ?
+                    ");
+                    $update->bind_param("si", $attendance_date, $id);
+                    $update->execute();
+                    $update->close();
+                }
             }
         }
     }
 
-    $_SESSION['evangelism_success'] = "✅ Evangelism attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "!";
+    $_SESSION['evangelism_success'] = "✅ Evangelism attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "! (Repeated saves for the same date won't increase counts)";
     header("Location: evangelism.php");
     exit();
 }
@@ -50,7 +71,6 @@ $result = $mysqli->query("
     FROM non_members
     ORDER BY lastname ASC
 ");
-
 $non_members = $result->fetch_all(MYSQLI_ASSOC);
 
 // Check for promotion eligibility
@@ -80,10 +100,10 @@ $eligibleCount = count($eligible);
 .save-btn:hover { background:#02589b; }
 .summary { margin-top:18px; display:flex; gap:10px; justify-content:center; }
 .summary div { background:#f6f8fb; padding:10px 18px; border-radius:8px; font-weight:600; }
+.notice { background:#eef6ff; border:1px solid #b6d9ff; color:#004085; padding:10px; border-radius:8px; margin-top:15px; font-size:0.95em; }
 input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 </style>
 </head>
-
 
 <script src="scripts/sidebar_badges.js"></script>
 <body>
@@ -149,7 +169,10 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
                         <?php endforeach; endif; ?>
                     </tbody>
                 </table>
-                <center><button type="submit" name="save_evangelism" class="save-btn">💾 Save Evangelism Attendance</button></center>
+                <center>
+                    <button type="submit" name="save_evangelism" class="save-btn">💾 Save Evangelism Attendance</button>
+                    <div class="notice">ℹ️ Attendance counts only increase the <strong>first time</strong> someone is marked Present for a date.</div>
+                </center>
             </form>
 
             <!-- Summary Section -->
