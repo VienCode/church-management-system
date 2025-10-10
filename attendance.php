@@ -1,10 +1,6 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-echo "<pre>";
-print_r($_SESSION);
-echo "</pre>";
-exit;
 
 
 restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER]);
