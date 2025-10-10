@@ -13,7 +13,11 @@
             <li class="nav-section">Attendance</li>
             <li><a href="attendance.php" class="<?= basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : '' ?>"><span>👥</span> Attendance</a></li>
             <li><a href="attendance_records.php"class="<?= basename($_SERVER['PHP_SELF']) == 'attendance_records.php' ? 'active' : '' ?>"><span>📋</span> Attendance Records</a></li>
+        <?php endif; ?>
+
         <?php if (can_access([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Evangelism</li>
             <li><a href="evangelism.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism.php' ? 'active' : '' ?>"><span>🌱</span> Evangelism</a></li>
             <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'promotion_page.php' ? 'active' : '' ?>"><span>📖</span> Promotion Panel</a></li>
             <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism_records.php' ? 'active' : '' ?>"><span>📖</span> Evangelism Records</a></li>
