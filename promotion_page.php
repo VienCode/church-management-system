@@ -3,16 +3,11 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]); // Admin-only access
 
-// Fetch eligible for promotion (non-members or unassigned members)
+// Fetch eligible non-members (10+ attendances)
 $eligible = $mysqli->query("
-    SELECT id, user_code, firstname, lastname, email, contact, attendances_count, 'non_member' AS source
+    SELECT id, user_code, firstname, lastname, email, contact, attendances_count
     FROM non_members
     WHERE attendances_count >= 10
-    UNION
-    SELECT id, user_code, firstname, lastname, email, contact, 0 AS attendances_count, 'unassigned_member' AS source
-    FROM users
-    WHERE role_id = 3 AND leader_id IS NULL
-    ORDER BY lastname ASC
 ");
 
 // ✅ Fetch recently unassigned members (within last 7 days)
