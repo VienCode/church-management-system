@@ -35,6 +35,7 @@ if (!empty($search_start) && !empty($search_end)) {
 $sql = "
     SELECT 
         n.id,
+        n.user_code,
         CONCAT(n.firstname, ' ', n.lastname) AS fullname,
         n.contact,
         n.email,
@@ -70,16 +71,69 @@ $total = count($records);
 <title>Evangelism Records | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.records-container { background:#fff; padding:24px; border-radius:12px; max-width:1100px; margin:30px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); }
-.search-filters { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; align-items:center; }
-.search-filters input, .search-filters select { padding:8px; border:1px solid #ccc; border-radius:6px; }
-.search-btn { background:#0271c0; color:white; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; }
-.export-btn { background:#28a745; color:white; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; }
-table { width:100%; border-collapse:collapse; margin-top:20px; }
-th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
-th { background:#0271c0; color:white; }
-.summary { margin-top:20px; display:flex; justify-content:center; gap:10px; }
-.summary div { background:#f6f8fb; padding:10px 20px; border-radius:8px; font-weight:600; }
+.records-container {
+    background:#fff;
+    padding:24px;
+    border-radius:12px;
+    max-width:1100px;
+    margin:30px auto;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+.search-filters {
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:15px;
+    align-items:center;
+}
+.search-filters input,
+.search-filters select {
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+}
+.search-btn {
+    background:#0271c0;
+    color:white;
+    border:none;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+}
+.export-btn {
+    background:#28a745;
+    color:white;
+    border:none;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+}
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+th, td {
+    padding:10px 12px;
+    border-bottom:1px solid #e6e6e6;
+    text-align:center;
+}
+th {
+    background:#0271c0;
+    color:white;
+}
+.summary {
+    margin-top:20px;
+    display:flex;
+    justify-content:center;
+    gap:10px;
+}
+.summary div {
+    background:#f6f8fb;
+    padding:10px 20px;
+    border-radius:8px;
+    font-weight:600;
+}
 </style>
 </head>
 
@@ -122,6 +176,7 @@ th { background:#0271c0; color:white; }
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>User Code</th>
                         <th>Full Name</th>
                         <th>Contact</th>
                         <th>Email</th>
@@ -133,10 +188,11 @@ th { background:#0271c0; color:white; }
                 </thead>
                 <tbody>
                     <?php if (empty($records)): ?>
-                        <tr><td colspan="8">No records found.</td></tr>
+                        <tr><td colspan="9">No records found.</td></tr>
                     <?php else: $i=1; foreach ($records as $r): ?>
                         <tr>
                             <td><?= $i++ ?></td>
+                            <td><strong><?= htmlspecialchars($r['user_code'] ?? '-') ?></strong></td>
                             <td><?= htmlspecialchars($r['fullname']) ?></td>
                             <td><?= htmlspecialchars($r['contact']) ?></td>
                             <td><?= htmlspecialchars($r['email']) ?></td>

@@ -152,7 +152,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
 
                 <div style="margin-top:20px;">
                     <button type="submit" class="primary-btn">🚀 Promote Selected</button>
-                    <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>
+                    <a href="promotion_page.php" class="secondary-btn">⬅ Back</a>
                 </div>
             </form>
         </div>
