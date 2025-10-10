@@ -19,12 +19,6 @@ $today = date('Y-m-d');
 
 $today = date('Y-m-d');
 
-// Fetch role-based cell group data
-if ($user_role == ROLE_ADMIN) {
-    header("Location: cell_groups_admin.php");
-    exit;
-}
-
 if ($user_role == ROLE_LEADER) {
     // Get leader_id for logged in leader
     $leaderQuery = $mysqli->prepare("SELECT leader_id FROM leaders WHERE user_id = ?");
