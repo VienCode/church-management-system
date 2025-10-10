@@ -118,7 +118,7 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 <script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
-   <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <div class="content-area">
         <div class="attendance-container">
