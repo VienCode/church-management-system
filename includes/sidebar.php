@@ -19,7 +19,7 @@
         <li class="nav-divider"></li>
             <li class="nav-section">Evangelism</li>
             <li><a href="evangelism.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism.php' ? 'active' : '' ?>"><span>🌱</span> Evangelism</a></li>
-            <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'promotion_page.php' ? 'active' : '' ?>"><span>📖</span> Promotion Panel</a></li>
+            <li><a href="promotion_page.php" class="<?= basename($_SERVER['PHP_SELF']) == 'promotion_page.php' ? 'active' : '' ?>"><span>📖</span> Promotion Panel</a></li>
             <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism_records.php' ? 'active' : '' ?>"><span>📖</span> Evangelism Records</a></li>
         <?php endif; ?>
 
