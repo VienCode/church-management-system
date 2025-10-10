@@ -5,7 +5,7 @@
     </div>
     <ul class="nav-menu">
         <!-- GENERAL PAGES -->
-        <li><a href="Dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : '' ?>"><span>👥</span> Dashboard</a></li>
+        <li><a href="Dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'attendance.php' ? 'active' : '' ?>"><span>🏠</span> Dashboard</a></li>
 
 
         <?php if (can_access([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER])): ?>
