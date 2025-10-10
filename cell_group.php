@@ -1,16 +1,21 @@
 <?php
+session_start();
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_MEMBER]);
 
-$user_role = $_SESSION['user_role_id'] ?? $_SESSION['role_id'] ?? null;
-$user_id = $_SESSION['user_id'] ?? null;
-
-// Redirect to login if session expired or missing
-if (!$user_role || !$user_id) {
+// Ensure user is logged in and has a role
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role_id'])) {
     header("Location: login.php");
     exit;
 }
+
+// Allow only Admin, Leader, or Member roles
+restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_MEMBER]);
+
+$user_role = $_SESSION['user_role_id'];
+$user_id = $_SESSION['user_id'];
+$today = date('Y-m-d');
+
 
 $today = date('Y-m-d');
 
