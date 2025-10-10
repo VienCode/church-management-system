@@ -17,7 +17,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
         $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
         if ($status) {
-            // Insert or update evangelism attendance
+            // ✅ STEP 1: Check BEFORE inserting if record already exists for this date
+            $check = $mysqli->prepare("
+                SELECT status 
+                FROM evangelism_attendance 
+                WHERE non_member_id = ? AND attendance_date = ?
+                LIMIT 1
+            ");
+            $check->bind_param("is", $id, $attendance_date);
+            $check->execute();
+            $check_result = $check->get_result();
+            $existing_record = $check_result->fetch_assoc();
+            $check->close();
+
+            $already_present_today = ($existing_record && $existing_record['status'] === 'Present');
+
+            // ✅ STEP 2: Insert or update the attendance record
             $stmt = $mysqli->prepare("
                 INSERT INTO evangelism_attendance (non_member_id, attendance_date, status, time_in, recorded_by)
                 VALUES (?, ?, ?, ?, ?)
@@ -29,38 +44,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
             $stmt->bind_param("issss", $id, $attendance_date, $status, $time_in, $current_user_code);
             $stmt->execute();
 
-            // ✅ FIX: Only increment attendance count once per date
-            if ($status === 'Present') {
-                // Check if a Present record already exists for this date
-                $check = $mysqli->prepare("
-                    SELECT 1 
-                    FROM evangelism_attendance 
-                    WHERE non_member_id = ? 
-                    AND attendance_date = ? 
-                    AND status = 'Present'
-                    LIMIT 1
+            // ✅ STEP 3: Increment count ONLY IF first Present for this date
+            if ($status === 'Present' && !$already_present_today) {
+                $update = $mysqli->prepare("
+                    UPDATE non_members 
+                    SET attendances_count = attendances_count + 1,
+                        last_attended = ?
+                    WHERE id = ?
                 ");
-                $check->bind_param("is", $id, $attendance_date);
-                $check->execute();
-                $exists = $check->get_result()->num_rows > 0;
-                $check->close();
-
-                if (!$exists) {
-                    $update = $mysqli->prepare("
-                        UPDATE non_members 
-                        SET attendances_count = attendances_count + 1,
-                            last_attended = ?
-                        WHERE id = ?
-                    ");
-                    $update->bind_param("si", $attendance_date, $id);
-                    $update->execute();
-                    $update->close();
-                }
+                $update->bind_param("si", $attendance_date, $id);
+                $update->execute();
+                $update->close();
             }
         }
     }
 
-    $_SESSION['evangelism_success'] = "✅ Evangelism attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "! (Repeated saves for the same date won't increase counts)";
+    $_SESSION['evangelism_success'] = "✅ Evangelism attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "!";
     header("Location: evangelism.php");
     exit();
 }
@@ -171,7 +170,7 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
                 </table>
                 <center>
                     <button type="submit" name="save_evangelism" class="save-btn">💾 Save Evangelism Attendance</button>
-                    <div class="notice">ℹ️ Attendance counts only increase the <strong>first time</strong> someone is marked Present for a date.</div>
+                    <div class="notice">ℹ️ Attendance count increases once per unique date marked as Present.</div>
                 </center>
             </form>
 
