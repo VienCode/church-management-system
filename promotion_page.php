@@ -3,23 +3,12 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]); // Admin-only access
 
-// Fetch eligible non-members (10+ attendances)
+// Fetch eligible for promotion (non-members only)
 $eligible = $mysqli->query("
     SELECT id, user_code, firstname, lastname, email, contact, attendances_count
     FROM non_members
     WHERE attendances_count >= 10
-");
-
-// ✅ Fetch recently unassigned members (within last 7 days)
-$recently_unassigned = $mysqli->query("
-    SELECT 
-        id, firstname, lastname, email, contact,
-        last_leader_name,
-        DATE_FORMAT(last_unassigned_at, '%M %e, %Y %h:%i %p') AS unassigned_on
-    FROM users
-    WHERE leader_id IS NULL 
-      AND last_unassigned_at >= NOW() - INTERVAL 7 DAY
-    ORDER BY last_unassigned_at DESC
+    ORDER BY lastname ASC
 ");
 
 // Fetch all leaders
@@ -42,21 +31,9 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             margin: 40px auto;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-        }
-
-        th {
-            background-color: #007bff;
-            color: white;
-        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: center; }
+        th { background-color: #007bff; color: white; }
 
         .primary-btn {
             background-color: #007bff;
@@ -67,10 +44,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             cursor: pointer;
             font-weight: 600;
         }
-
-        .primary-btn:hover {
-            background-color: #0056b3;
-        }
+        .primary-btn:hover { background-color: #0056b3; }
 
         .secondary-btn {
             background-color: #ccc;
@@ -81,10 +55,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             cursor: pointer;
             font-weight: 600;
         }
-
-        .secondary-btn:hover {
-            background-color: #aaa;
-        }
+        .secondary-btn:hover { background-color: #aaa; }
 
         select {
             padding: 8px;
@@ -92,32 +63,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
             border: 1px solid #ccc;
         }
 
-        h1 {
-            margin-bottom: 20px;
-            color: #222;
-        }
-
-        .recent-banner {
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            color: #856404;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-        }
-
-        .recent-banner h3 {
-            margin: 0 0 10px 0;
-        }
-
-        .recent-banner ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .recent-banner li {
-            margin-bottom: 6px;
-        }
+        h1 { margin-bottom: 20px; color: #222; }
     </style>
 </head>
 
@@ -127,10 +73,10 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
     <!-- Sidebar -->
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
-    <!-- Content Area -->
     <div class="content-area">
         <div class="promotion-container">
             <h1>🕊️ Promotion Panel</h1>
+            <p>These Non-Members have reached 10 or more attendances. Assign them a leader and promote them to Members.</p>
 
             <?php if (isset($_SESSION['promotion_result'])): ?>
                 <div class="success-message" style="margin:15px 0;">
@@ -139,27 +85,6 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                 <?php unset($_SESSION['promotion_result']); ?>
             <?php endif; ?>
 
-            <!-- ✅ Recently Unassigned Members -->
-            <?php if ($recently_unassigned->num_rows > 0): ?>
-                <div class="recent-banner">
-                    <h3>⚠️ Recently Unassigned Members</h3>
-                    <p>The following members were detached from their leaders recently and may need reassignment:</p>
-                    <ul>
-                        <?php while ($r = $recently_unassigned->fetch_assoc()): ?>
-                            <li>
-                                <strong><?= htmlspecialchars($r['firstname'] . ' ' . $r['lastname']) ?></strong> 
-                                (<?= htmlspecialchars($r['email']) ?>)
-                                — Unassigned on <?= htmlspecialchars($r['unassigned_on']) ?>
-                                <?php if (!empty($r['last_leader_name'])): ?>
-                                    <br><small>👤 Previously under Leader: <strong><?= htmlspecialchars($r['last_leader_name']) ?></strong></small>
-                                <?php endif; ?>
-                            </li>
-                        <?php endwhile; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
-
-            <!-- Promotion Table -->
             <form action="promote_nonmembers.php" method="POST">
                 <table>
                     <thead>
@@ -175,7 +100,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                     </thead>
                     <tbody>
                         <?php if ($eligible->num_rows === 0): ?>
-                            <tr><td colspan="7">No non-members or unassigned members eligible for promotion.</td></tr>
+                            <tr><td colspan="7">No non-members eligible for promotion.</td></tr>
                         <?php else: ?>
                             <?php while ($nm = $eligible->fetch_assoc()): ?>
                                 <tr>
@@ -183,7 +108,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                                     <td><?= htmlspecialchars($nm['firstname'] . ' ' . $nm['lastname']) ?></td>
                                     <td><?= htmlspecialchars($nm['email']) ?></td>
                                     <td><?= htmlspecialchars($nm['contact']) ?></td>
-                                    <td><?= htmlspecialchars($nm['attendances_count']) ?></td>
+                                    <td><?= $nm['attendances_count'] ?></td>
                                     <td>
                                         <select name="leader_id[<?= $nm['id'] ?>]" required>
                                             <option value="" disabled selected>Select Leader</option>
@@ -196,9 +121,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                                             <?php endwhile; ?>
                                         </select>
                                     </td>
-                                    <td>
-                                        <input type="checkbox" name="promote_ids[]" value="<?= $nm['id'] ?>">
-                                    </td>
+                                    <td><input type="checkbox" name="promote_ids[]" value="<?= $nm['id'] ?>"></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php endif; ?>

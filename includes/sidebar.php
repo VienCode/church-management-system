@@ -58,7 +58,7 @@
             <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
             <li><a href="admin_dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'admin_dashboard.php' ? 'active' : '' ?>"><span>⚙️</span> Manage Users</a></li>
             <li><a href="cell_groups_admin.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_groups_admin.php' ? 'active' : '' ?>"><span>📜</span> Cell Group Management</a></li>
-            <li><a href="unassigned_members.php"><span>🔄</span> Unassigned Members</a></li>
+            <li><a href="unassigned_members.php" class="<?= basename($_SERVER['PHP_SELF']) == 'unassigned_members.php' ? 'active' : '' ?>"><span>📜</span> Unassigned Members</a></li>
         <?php endif; ?>
 
         <li><a href="logout.php"><span>🚪</span> Logout</a></li>
