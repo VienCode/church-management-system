@@ -3,17 +3,23 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]);
 
-// Fetch all unassigned members (role_id = 3, leader_id IS NULL, with attendance)
+// Fetch all unassigned members (role_id = 3, leader_id IS NULL or invalid leader)
 $sql = "
-    SELECT id, user_code, firstname, lastname, email, contact 
-    FROM users
-    WHERE role_id = 3 
-    AND leader_id IS NULL
-    AND user_code IN (SELECT DISTINCT user_code FROM attendance)
-    ORDER BY lastname ASC
+    SELECT u.id, u.user_code, u.firstname, u.lastname, u.email, u.contact
+    FROM users u
+    LEFT JOIN users l ON u.leader_id = l.id
+    WHERE u.role_id = 3
+      AND (
+          u.leader_id IS NULL
+          OR l.role_id != 2
+          OR l.id IS NULL
+      )
+      AND u.user_code IN (SELECT DISTINCT user_code FROM attendance)
+    ORDER BY u.lastname ASC
 ";
 $result = $mysqli->query($sql);
 $members = $result->fetch_all(MYSQLI_ASSOC);
+
 
 // Fetch leaders
 $leaders = $mysqli->query("
