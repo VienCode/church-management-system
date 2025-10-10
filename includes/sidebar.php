@@ -24,10 +24,14 @@
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Announcements</li>
             <li><a href="upload.php" class="<?= basename($_SERVER['PHP_SELF']) == 'upload.php' ? 'active' : '' ?>"><span>📢</span> Church Updates</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Tithes & Offerings</li>
             <li><a href="donations.php" class="<?= basename($_SERVER['PHP_SELF']) == 'donations.php' ? 'active' : '' ?>"><span>💰</span> Donations</a></li>
         <?php endif; ?>
 
