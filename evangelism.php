@@ -84,6 +84,7 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 </style>
 </head>
 
+
 <script src="scripts/sidebar_badges.js"></script>
 <body>
 <div class="main-layout">
