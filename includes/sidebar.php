@@ -33,7 +33,7 @@
         <li class="nav-divider"></li>
             <li class="nav-section">Announcements</li>
             <li><a href="upload.php" class="<?= basename($_SERVER['PHP_SELF']) == 'upload.php' ? 'active' : '' ?>"><span>📢</span> Post Announcement</a></li>
-            <li><a href="upload_history.php" class="<?= basename($_SERVER['PHP_SELF']) == 'upload_history.php' ? 'active' : '' ?>"><span>📢</span> Uploads Historyt</a></li>
+            <li><a href="update_history.php" class="<?= basename($_SERVER['PHP_SELF']) == 'update_history.php' ? 'active' : '' ?>"><span>📢</span> Uploads History</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
