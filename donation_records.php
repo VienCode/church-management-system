@@ -3,7 +3,7 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN, ROLE_ACCOUNTANT]);
 
-// ✅ Handle Filters
+// ✅ Filters
 $search = trim($_GET['search'] ?? '');
 $purpose = trim($_GET['purpose'] ?? '');
 $start_date = $_GET['start_date'] ?? '';
@@ -37,7 +37,7 @@ if ($start_date && $end_date) {
     $types .= "ss";
 }
 
-// ✅ Fetch Donations
+// ✅ Fetch donations
 $sql = "SELECT * FROM donations WHERE $where ORDER BY donation_date DESC";
 $stmt = $mysqli->prepare($sql);
 if ($params) $stmt->bind_param($types, ...$params);
@@ -45,14 +45,14 @@ $stmt->execute();
 $result = $stmt->get_result();
 $donations = $result->fetch_all(MYSQLI_ASSOC);
 
-// ✅ Summary Stats
+// ✅ Stats
 $stats_sql = "SELECT COUNT(*) AS total_count, SUM(amount) AS total_sum, AVG(amount) AS avg_amount, MAX(amount) AS max_amount FROM donations WHERE $where";
 $stats_stmt = $mysqli->prepare($stats_sql);
 if ($params) $stats_stmt->bind_param($types, ...$params);
 $stats_stmt->execute();
 $stats = $stats_stmt->get_result()->fetch_assoc();
 
-// ✅ Chart Data (by Purpose)
+// ✅ Chart Data: Purpose Pie Chart
 $chart_sql = "SELECT purpose, SUM(amount) AS total FROM donations WHERE $where GROUP BY purpose ORDER BY total DESC";
 $chart_stmt = $mysqli->prepare($chart_sql);
 if ($params) $chart_stmt->bind_param($types, ...$params);
@@ -69,6 +69,26 @@ while ($row = $chart_result->fetch_assoc()) {
     $chart_values[] = $row['total'];
     $total_amount += $row['total'];
     if (!$top_source) $top_source = $row['purpose'];
+}
+
+// ✅ Bar Chart: Donations Over Time
+$trend_sql = "
+    SELECT DATE_FORMAT(donation_date, '%Y-%m-%d') AS day, SUM(amount) AS total
+    FROM donations 
+    WHERE $where 
+    GROUP BY day
+    ORDER BY day ASC
+";
+$trend_stmt = $mysqli->prepare($trend_sql);
+if ($params) $trend_stmt->bind_param($types, ...$params);
+$trend_stmt->execute();
+$trend_result = $trend_stmt->get_result();
+
+$trend_labels = [];
+$trend_values = [];
+while ($row = $trend_result->fetch_assoc()) {
+    $trend_labels[] = date('M j', strtotime($row['day']));
+    $trend_values[] = $row['total'];
 }
 ?>
 
@@ -156,6 +176,18 @@ th { background:#0271c0; color:#fff; }
             </div>
         </div>
 
+        <!-- NEW: Trend Chart -->
+        <div class="chart-section">
+            <h2>📈 Donations Over Time</h2>
+            <div style="margin-bottom:15px;">
+                <button class="primary-btn chart-toggle" data-interval="daily">📅 Daily</button>
+                <button class="secondary-btn chart-toggle" data-interval="weekly">🗓 Weekly</button>
+                <button class="secondary-btn chart-toggle" data-interval="monthly">📆 Monthly</button>
+            </div>
+            <canvas id="trendChart" style="max-width:800px; margin:auto;"></canvas>
+        </div>
+
+
         <!-- Table -->
         <table>
             <thead>
@@ -189,31 +221,102 @@ th { background:#0271c0; color:#fff; }
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// ✅ Pie Chart for Purpose Breakdown
-const ctx = document.getElementById('purposeChart');
-new Chart(ctx, {
+let trendChart;
+
+// ✅ Initialize Bar Chart
+async function loadTrendChart(interval = 'daily') {
+    const response = await fetch('fetch_donation_trends.php?interval=' + interval);
+    const data = await response.json();
+
+    const labels = data.map(item => item.label);
+    const values = data.map(item => parseFloat(item.total));
+
+    if (trendChart) trendChart.destroy();
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: '₱ Donations (' + interval.charAt(0).toUpperCase() + interval.slice(1) + ')',
+                data: values,
+                backgroundColor: 'rgba(2, 113, 192, 0.7)',
+                borderColor: '#0271c0',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => '₱ ' + ctx.formattedValue
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: '₱ Amount' } },
+                x: { title: { display: true, text: 'Period' } }
+            }
+        }
+    });
+}
+
+// ✅ Toggle buttons
+document.querySelectorAll('.chart-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+        document.querySelectorAll('.chart-toggle').forEach(b => b.classList.remove('primary-btn'));
+        e.target.classList.add('primary-btn');
+        loadTrendChart(e.target.dataset.interval);
+    });
+});
+
+// ✅ Load daily by default
+loadTrendChart();
+
+// ✅ Pie Chart (unchanged)
+new Chart(document.getElementById('purposeChart'), {
     type: 'pie',
     data: {
         labels: <?= json_encode($chart_labels) ?>,
         datasets: [{
             data: <?= json_encode($chart_values) ?>,
-            backgroundColor: [
-                '#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1'
-            ],
+            backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1'],
             borderWidth: 1
         }]
     },
     options: {
         responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// ✅ Bar Chart for Donations Over Time
+new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+        labels: <?= json_encode($trend_labels) ?>,
+        datasets: [{
+            label: 'Donations Over Time',
+            data: <?= json_encode($trend_values) ?>,
+            backgroundColor: 'rgba(2, 113, 192, 0.7)',
+            borderColor: '#0271c0',
+            borderWidth: 1,
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
         plugins: {
-            legend: { position: 'bottom' },
-            tooltip: {
-                callbacks: {
-                    label: function(ctx) {
-                        return ctx.label + ': ₱' + ctx.formattedValue;
-                    }
-                }
-            }
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => '₱' + ctx.formattedValue } }
+        },
+        scales: {
+            y: { beginAtZero: true, title: { display: true, text: '₱ Amount' } },
+            x: { title: { display: true, text: 'Date' } }
         }
     }
 });

@@ -40,6 +40,7 @@
         <li class="nav-divider"></li>
             <li class="nav-section">Tithes & Offerings</li>
             <li><a href="donations.php" class="<?= basename($_SERVER['PHP_SELF']) == 'donations.php' ? 'active' : '' ?>"><span>💰</span> Donations</a></li>
+            <li><a href="donation_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'donation_records.php' ? 'active' : '' ?>"><span>💰</span> Donation Records</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ACCOUNTANT, ROLE_ADMIN])): ?>
