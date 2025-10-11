@@ -160,7 +160,7 @@ form button:hover { background: #02589b; }
                     <p><small>Posted by <?= htmlspecialchars($post['posted_by_name']) ?> on <?= date('F j, Y', strtotime($post['created_at'])) ?></small></p>
 
                     <div class="actions">
-                        <a href="update_edit.php?id=<?= $post['update_id'] ?>" class="edit-btn">✏️ Edit</a>
+                        <a href="edit_update.php?id=<?= $post['update_id'] ?>" class="edit-btn">✏️ Edit</a>
                         <a href="update_delete.php?id=<?= $post['update_id'] ?>" class="delete-btn" onclick="return confirm('Delete this post?')">🗑️ Delete</a>
                         <a href="update_pin_toggle.php?id=<?= $post['update_id'] ?>" class="pin-btn"><?= $post['is_pinned'] ? '📍 Unpin' : '📌 Pin' ?></a>
                     </div>
