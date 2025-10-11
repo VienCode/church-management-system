@@ -42,7 +42,7 @@
         <?php endif; ?>
 
         <?php if (can_access([ROLE_ADMIN])): ?>
-            <li><a href="cell_groups_overview.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_groups_overview.php' ? 'active' : '' ?>"><span>📊</span> Groups Overview</a></li>
+            <li><a href="cell_group_overview.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_overview.php' ? 'active' : '' ?>"><span>📊</span> Groups Overview</a></li>
             <li><a href="cell_groups_admin.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_groups_admin.php' ? 'active' : '' ?>"><span>🧩</span> Manage Cell Groups</a></li>
         <?php endif; ?>
         <?php endif; ?>
