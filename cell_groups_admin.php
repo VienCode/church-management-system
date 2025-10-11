@@ -1,97 +1,203 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN]);
+restrict_to_roles([ROLE_ADMIN]); // Only admins can access this page
 
-$group_id = $_GET['group_id'] ?? 0;
+// Handle filters
+$search = $_GET['search'] ?? '';
+$leader_filter = $_GET['leader_id'] ?? 'all';
 
-// ✅ Fetch group and leader info safely
-$stmt = $mysqli->prepare("
-    SELECT cg.group_name, l.leader_name, l.email AS leader_email, l.contact AS leader_contact
-    FROM cell_groups cg
-    LEFT JOIN leaders l ON cg.leader_id = l.leader_id
-    WHERE cg.id = ?
-");
-$stmt->bind_param("i", $group_id);
-$stmt->execute();
-$group_result = $stmt->get_result();
-$group = $group_result->fetch_assoc();
-$stmt->close();
+// Fetch all leaders for filter dropdown
+$leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
 
-// ✅ Handle missing group (avoid null access)
-if (!$group) {
-    echo "<div style='background:#ffe6e6; color:#a11b1b; padding:12px; border-radius:8px; font-weight:600;'>
-        ⚠️ The selected cell group (ID: {$group_id}) could not be found or has no assigned leader.
-    </div>";
-    exit;
+// Base query
+$sql = "
+SELECT 
+    l.leader_id,
+    l.leader_name,
+    l.email AS leader_email,
+    l.contact AS leader_contact,
+    u.user_code,
+    CONCAT(u.firstname, ' ', u.lastname) AS member_name,
+    u.email AS member_email,
+    u.role_id
+FROM leaders l
+LEFT JOIN users u 
+    ON u.leader_id = l.leader_id
+WHERE 1
+";
+
+// Apply filters
+$params = [];
+$types = "";
+
+if ($leader_filter !== 'all') {
+    $sql .= " AND l.leader_id = ? ";
+    $params[] = $leader_filter;
+    $types .= "i";
 }
 
-// Fallbacks (avoid undefined offsets)
-$group_name = $group['group_name'] ?? 'Unnamed Group';
-$leader_name = $group['leader_name'] ?? 'Not Assigned';
-$leader_email = $group['leader_email'] ?? '—';
-$leader_contact = $group['leader_contact'] ?? '—';
+if (!empty($search)) {
+    $sql .= " AND (
+        l.leader_name LIKE ? OR 
+        u.firstname LIKE ? OR 
+        u.lastname LIKE ? OR 
+        u.user_code LIKE ?
+    )";
+    $like = "%$search%";
+    $params = array_merge($params, [$like, $like, $like, $like]);
+    $types .= "ssss";
+}
 
+$sql .= " ORDER BY l.leader_name ASC, u.lastname ASC";
 
-$members = $mysqli->query("
-    SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS member_name, u.email, r.role_name
-    FROM cell_group_members cgm
-    JOIN users u ON cgm.member_id = u.id
-    JOIN roles r ON u.role_id = r.role_id
-    WHERE cgm.cell_group_id = $group_id
-    ORDER BY u.lastname ASC
-");
+$stmt = $mysqli->prepare($sql);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cell Group Details | <?= htmlspecialchars($group['group_name']) ?></title>
+<title>Cell Group Management | Admin</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.container { background:#fff; padding:24px; border-radius:12px; max-width:1000px; margin:30px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+.cell-container {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 1150px;
+    margin: 30px auto;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
 h1 { color:#0271c0; }
-table { width:100%; border-collapse:collapse; margin-top:15px; }
-th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
-th { background:#0271c0; color:white; }
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.filter-bar input, .filter-bar select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.filter-bar button {
+    background: #0271c0;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.filter-bar button:hover {
+    background: #02589b;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e6e6e6;
+    text-align: center;
+}
+th {
+    background: #0271c0;
+    color: white;
+}
+tr:nth-child(even) {
+    background: #f8f9fb;
+}
+.summary {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.summary div {
+    background: #f4f7fa;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+}
 </style>
 </head>
+
 <body>
 <div class="main-layout">
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
-    <div class="content-area">
-        <div class="container">
-            <h1>👥 <?= htmlspecialchars($group['group_name']) ?> - Members</h1>
-            <p><strong>Leader:</strong> <?= htmlspecialchars($group['leader_name']) ?><br>
-               <strong>Email:</strong> <?= htmlspecialchars($group['leader_email']) ?><br>
-               <strong>Contact:</strong> <?= htmlspecialchars($group['leader_contact']) ?></p>
 
+    <div class="content-area">
+        <div class="cell-container">
+            <h1>🧩 Cell Group Management (Admin View)</h1>
+            <p>View all cell groups, their leaders, and members.</p>
+
+            <!-- Filters -->
+            <form method="GET" class="filter-bar">
+                <select name="leader_id">
+                    <option value="all" <?= $leader_filter == 'all' ? 'selected' : '' ?>>All Leaders</option>
+                    <?php while ($leader = $leaders->fetch_assoc()): ?>
+                        <option value="<?= $leader['leader_id'] ?>" <?= $leader_filter == $leader['leader_id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($leader['leader_name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+                <input type="text" name="search" placeholder="🔍 Search by name, code..." value="<?= htmlspecialchars($search) ?>">
+                <button type="submit">Filter</button>
+                <a href="cell_groups_admin.php" style="padding:8px 14px; background:#ccc; border-radius:8px; text-decoration:none; color:black;">Reset</a>
+            </form>
+
+            <!-- Table -->
             <table>
                 <thead>
                     <tr>
-                        <th>User Code</th>
+                        <th>#</th>
+                        <th>Leader</th>
+                        <th>Leader Contact</th>
+                        <th>Leader Email</th>
+                        <th>Member Code</th>
                         <th>Member Name</th>
-                        <th>Email</th>
+                        <th>Member Email</th>
                         <th>Role</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($members->num_rows === 0): ?>
-                        <tr><td colspan="4">No members found in this group.</td></tr>
-                    <?php else: while ($m = $members->fetch_assoc()): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($m['user_code']) ?></td>
-                            <td><?= htmlspecialchars($m['member_name']) ?></td>
-                            <td><?= htmlspecialchars($m['email']) ?></td>
-                            <td><?= htmlspecialchars($m['role_name']) ?></td>
-                        </tr>
-                    <?php endwhile; endif; ?>
+                    <?php
+                    $i = 1;
+                    if ($result->num_rows === 0): ?>
+                        <tr><td colspan="8">No records found.</td></tr>
+                    <?php else: 
+                        while ($row = $result->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= $i++ ?></td>
+                                <td><?= htmlspecialchars($row['leader_name']) ?></td>
+                                <td><?= htmlspecialchars($row['leader_contact']) ?></td>
+                                <td><?= htmlspecialchars($row['leader_email']) ?></td>
+                                <td><?= htmlspecialchars($row['user_code'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($row['member_name'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($row['member_email'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($row['role_id'] ?? '-') ?></td>
+                            </tr>
+                        <?php endwhile;
+                    endif; ?>
                 </tbody>
             </table>
 
-            <a href="cell_groups_admin.php" class="save-btn" style="margin-top:20px; display:inline-block;">⬅ Back</a>
+            <div class="summary">
+                <div>👑 Total Leaders: <?= $leaders->num_rows ?></div>
+                <div>👥 Total Members Displayed: <?= $result->num_rows ?></div>
+            </div>
         </div>
     </div>
 </div>
+<script>
+</script>
 </body>
 </html>
