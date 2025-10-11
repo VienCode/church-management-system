@@ -1,7 +1,45 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_LEADER]); // Leader-only access
+restrict_to_roles([ROLE_LEADER, ROLE_ADMIN]);
+
+$user_id = $_SESSION['user_id'] ?? null;
+$user_email = $_SESSION['email'] ?? null;
+$firstname = $_SESSION['firstname'] ?? '';
+$lastname = $_SESSION['lastname'] ?? '';
+$fullname = trim("$firstname $lastname");
+
+// STEP 1: Check if this leader already exists
+$check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? LIMIT 1");
+$check_leader->bind_param("s", $user_email);
+$check_leader->execute();
+$existing = $check_leader->get_result()->fetch_assoc();
+$check_leader->close();
+
+// STEP 2: Only register if not already existing
+if (!$existing && !empty($user_email)) {
+    $stmt = $mysqli->prepare("
+        INSERT INTO leaders (leader_name, email, contact, created_at)
+        VALUES (?, ?, (SELECT contact FROM users WHERE email = ? LIMIT 1), NOW())
+    ");
+    $stmt->bind_param("sss", $fullname, $user_email, $user_email);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// Fetch the leader record again safely
+$leader_stmt = $mysqli->prepare("SELECT * FROM leaders WHERE email = ? LIMIT 1");
+$leader_stmt->bind_param("s", $user_email);
+$leader_stmt->execute();
+$leader = $leader_stmt->get_result()->fetch_assoc();
+$leader_stmt->close();
+
+if (!$leader) {
+    echo "<h2 style='color:red; text-align:center;'>❌ Leader record not found. Please contact an administrator.</h2>";
+    exit();
+}
+
+$leader_id = $leader['leader_id'];
 
 // Get logged-in leader session info
 $leader_email = $_SESSION['email'] ?? null;
