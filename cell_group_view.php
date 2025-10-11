@@ -168,10 +168,13 @@ select.move-select { padding:6px; border-radius:6px; border:1px solid #ccc; }
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
     <div class="content-area">
         <div class="container">
-            <h1>👥 <?= htmlspecialchars($group['group_name']) ?> - Members</h1>
-            <p><strong>Leader:</strong> <?= htmlspecialchars($group['leader_name']) ?><br>
-               <strong>Email:</strong> <?= htmlspecialchars($group['leader_email']) ?><br>
-               <strong>Contact:</strong> <?= htmlspecialchars($group['leader_contact']) ?></p>
+            <h1>👥 <?= htmlspecialchars($group_name) ?> - Members</h1>
+                <p>
+                    <strong>Leader:</strong> <?= htmlspecialchars($leader_name) ?><br>
+                    <strong>Email:</strong> <?= htmlspecialchars($leader_email) ?><br>
+                    <strong>Contact:</strong> <?= htmlspecialchars($leader_contact) ?>
+                </p>
+
 
             <?php if(isset($success)): ?><div class="success"><?= $success ?></div><?php endif; ?>
             <?php if(isset($error)): ?><div class="error"><?= $error ?></div><?php endif; ?>

@@ -5,6 +5,7 @@ restrict_to_roles([ROLE_ADMIN]);
 
 $group_id = $_GET['group_id'] ?? 0;
 
+// ✅ Fetch group and leader info safely
 $stmt = $mysqli->prepare("
     SELECT cg.group_name, l.leader_name, l.email AS leader_email, l.contact AS leader_contact
     FROM cell_groups cg
@@ -13,8 +14,24 @@ $stmt = $mysqli->prepare("
 ");
 $stmt->bind_param("i", $group_id);
 $stmt->execute();
-$group = $stmt->get_result()->fetch_assoc();
+$group_result = $stmt->get_result();
+$group = $group_result->fetch_assoc();
 $stmt->close();
+
+// ✅ Handle missing group (avoid null access)
+if (!$group) {
+    echo "<div style='background:#ffe6e6; color:#a11b1b; padding:12px; border-radius:8px; font-weight:600;'>
+        ⚠️ The selected cell group (ID: {$group_id}) could not be found or has no assigned leader.
+    </div>";
+    exit;
+}
+
+// Fallbacks (avoid undefined offsets)
+$group_name = $group['group_name'] ?? 'Unnamed Group';
+$leader_name = $group['leader_name'] ?? 'Not Assigned';
+$leader_email = $group['leader_email'] ?? '—';
+$leader_contact = $group['leader_contact'] ?? '—';
+
 
 $members = $mysqli->query("
     SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS member_name, u.email, r.role_name
