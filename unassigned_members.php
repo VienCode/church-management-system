@@ -5,19 +5,14 @@ restrict_to_roles([ROLE_ADMIN]);
 
 // Fetch unassigned members (members without a leader)
 $sql = "
-    SELECT 
-        u.id, 
-        u.user_code, 
-        u.firstname, 
-        u.lastname, 
-        u.email, 
-        u.contact,
-        DATE_FORMAT(u.last_unassigned_at, '%M %e, %Y %h:%i %p') AS last_unassigned_at
+    SELECT u.id, u.user_code, u.firstname, u.lastname, u.email, u.contact
     FROM users u
-    WHERE u.role_id = 3 
-      AND (u.leader_id IS NULL OR u.leader_id = '')
+    LEFT JOIN users l ON u.leader_id = l.id
+    WHERE (u.role_id = 3 OR u.is_cell_member = 1)
+      AND (u.leader_id IS NULL OR l.role_id != 2 OR l.id IS NULL)
     ORDER BY u.lastname ASC
 ";
+
 
 $result = $mysqli->query($sql);
 $members = $result->fetch_all(MYSQLI_ASSOC);

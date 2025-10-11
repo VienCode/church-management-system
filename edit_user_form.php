@@ -212,6 +212,12 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                     </select>
                 </div>
 
+                <label>
+                    <input type="checkbox" name="is_cell_member" value="1" <?= !empty($user['is_cell_member']) ? 'checked' : '' ?>>
+                    Part of a Cell Group
+                </label>
+
+
                 <div class="form-buttons">
                     <button type="submit" class="primary-btn">💾 Update User</button>
                     <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>

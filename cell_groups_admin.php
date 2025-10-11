@@ -9,20 +9,24 @@ $leader_filter = $_GET['leader_id'] ?? 'all';
 // Fetch all leaders
 $leaders = $mysqli->query("SELECT leader_id, leader_name, email FROM leaders ORDER BY leader_name ASC");
 
-// Base query
 $sql = "
-    SELECT 
-        cg.id AS cell_group_id,
-        cg.group_name,
-        l.leader_name,
-        l.email AS leader_email,
-        l.contact AS leader_contact,
-        COUNT(cgm.member_id) AS member_count
-    FROM cell_groups cg
-    JOIN leaders l ON cg.leader_id = l.leader_id
-    LEFT JOIN cell_group_members cgm ON cg.id = cgm.cell_group_id
-    WHERE 1
+SELECT 
+    l.leader_id,
+    l.leader_name,
+    l.email AS leader_email,
+    l.contact AS leader_contact,
+    u.user_code,
+    CONCAT(u.firstname, ' ', u.lastname) AS member_name,
+    u.email AS member_email,
+    u.role_id,
+    u.is_cell_member
+FROM leaders l
+LEFT JOIN users u 
+    ON u.leader_id = l.leader_id
+WHERE (u.role_id = 3 OR u.is_cell_member = 1)
+ORDER BY l.leader_name ASC, u.lastname ASC
 ";
+
 
 // Filters
 $params = [];
@@ -117,6 +121,8 @@ th { background:#0271c0; color:white; }
                             <td><?= htmlspecialchars($g['leader_name']) ?></td>
                             <td><?= htmlspecialchars($g['leader_email']) ?></td>
                             <td><?= htmlspecialchars($g['leader_contact']) ?></td>
+                            <td><?= htmlspecialchars($row['role_id'] == 3 ? 'Member' : 'Staff / ' . ucfirst($row['role_id'])) ?></td>
+                            <td><?= $row['is_cell_member'] ? '✅ Yes' : '❌ No' ?></td>
                             <td><?= $g['member_count'] ?></td>
                         </tr>
                     <?php endwhile; endif; ?>
