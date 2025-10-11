@@ -7,25 +7,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $user_id = intval($_POST["user_id"]);
 
     // 🔹 1. Fetch leader info
-    $stmt = $mysqli->prepare("
-        SELECT id, firstname, lastname, email, contact, user_code, role_id 
-        FROM users 
-        WHERE id = ?
-        LIMIT 1
-    ");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    // Disable foreign key checks temporarily to prevent cascading lock
+        $mysqli->query("SET foreign_key_checks = 0");
 
-    if (!$user) {
-        header("Location: admin_dashboard.php?msg=❌ User not found.");
-        exit();
-    }
+        // Demote user safely
+        $stmt = $mysqli->prepare("
+            UPDATE users 
+            SET role_id = 3, 
+                is_cell_member = 1,
+                user_code = CONCAT('M', SUBSTRING(user_code, 2)), 
+                leader_id = NULL
+            WHERE id = ?
+        ");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stmt->close();
 
-    $fullname = trim($user["firstname"] . " " . $user["lastname"]);
-    $email = trim($user["email"]);
-    $old_code = $user["user_code"];
+        // Re-enable foreign key checks
+        $mysqli->query("SET foreign_key_checks = 1");
+
 
     // 🔹 2. Verify current role is LEADER
     if ($user["role_id"] != ROLE_LEADER) {

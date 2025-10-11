@@ -11,21 +11,23 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name, email FROM leaders ORD
 
 $sql = "
 SELECT 
+    cg.id AS group_id,
+    cg.group_name,
+    cg.status AS group_status,
     l.leader_id,
     l.leader_name,
     l.email AS leader_email,
     l.contact AS leader_contact,
-    u.user_code,
-    CONCAT(u.firstname, ' ', u.lastname) AS member_name,
-    u.email AS member_email,
-    u.role_id,
-    u.is_cell_member
-FROM leaders l
-LEFT JOIN users u 
-    ON u.leader_id = l.leader_id
-WHERE (u.role_id = 3 OR u.is_cell_member = 1)
-ORDER BY l.leader_name ASC, u.lastname ASC
-";
+    COUNT(DISTINCT cgm.member_id) AS member_count,
+    IFNULL(MAX(m.meeting_date), 'No meetings yet') AS last_activity
+FROM cell_groups cg
+LEFT JOIN leaders l ON cg.leader_id = l.leader_id
+LEFT JOIN cell_group_members cgm ON cgm.cell_group_id = cg.id
+LEFT JOIN cell_group_meetings m ON m.cell_group_id = cg.id
+GROUP BY cg.id, cg.group_name, cg.status, l.leader_id, l.leader_name, l.email, l.contact
+ORDER BY cg.group_name ASC";
+
+
 
 
 // Filters
