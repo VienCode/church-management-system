@@ -6,6 +6,39 @@ restrict_to_roles([ROLE_ADMIN, ROLE_EDITOR]);
 $archived = $mysqli->query("
     SELECT * FROM church_updates WHERE is_archived = 1 ORDER BY updated_at DESC
 ");
+// Handle restore
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_id'])) {
+    $restore_id = intval($_POST['restore_id']);
+
+    $stmt = $mysqli->prepare("
+        UPDATE church_updates 
+        SET is_archived = 0, updated_at = NOW() 
+        WHERE update_id = ?
+    ");
+    $stmt->bind_param("i", $restore_id);
+    $stmt->execute();
+    header("Location: update_restore.php?msg=✅ Post restored successfully!");
+    exit();
+}
+
+// Handle permanent delete (optional)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $delete_id = intval($_POST['delete_id']);
+
+    $stmt = $mysqli->prepare("DELETE FROM church_updates WHERE update_id = ?");
+    $stmt->bind_param("i", $delete_id);
+    $stmt->execute();
+    header("Location: update_restore.php?msg=🗑️ Post permanently deleted.");
+    exit();
+}
+
+// Fetch archived posts
+$sql = "SELECT * FROM church_updates WHERE is_archived = 1 ORDER BY updated_at DESC";
+$result = $mysqli->query($sql);
+$archived_posts = $result->fetch_all(MYSQLI_ASSOC);
+
+$msg = isset($_GET['msg']) ? htmlspecialchars($_GET['msg']) : '';
+?>
 ?>
 
 <!DOCTYPE html>
