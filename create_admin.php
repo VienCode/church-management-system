@@ -1,51 +1,53 @@
 <?php
-// Run this file once to create an admin, then delete it for security.
-//THIS FILE IS FOR INSERTING ACCOUNTS WITH SPECIFIC ROLES FOR TESTING PURPOSES
+include 'database.php';
 
-require __DIR__ . '/database.php';
+// === CONFIGURATION ===
+// You can edit these values safely
+$firstname = "System";
+$lastname = "Administrator";
+$email = "admin@ucf.com";
+$contact = "09123456789";
+$age = 35;
+$user_address = "Church HQ, Unity City";
+$password_plain = "admin123"; // You can change this
+$role_id = 1; // Admin Role ID
+$role_prefix = "A"; // Prefix for admin user_code
 
-// --- Admin Account Details ---
-$firstname     = 'Gabriel';
-$lastname      = 'Santos';
-$suffix        = '';
-$contact       = '0931333333';
-$age           = 21;
-$user_address  = 'Cabuyaoi';
-$email         = 'gabriel@ucf.com';
-$password      = 'gabriel@1234';  // You can change this
-$role_id       = 2;             //
+// === CHECK IF ADMIN ALREADY EXISTS ===
+$check = $mysqli->prepare("SELECT id FROM users WHERE email = ?");
+$check->bind_param("s", $email);
+$check->execute();
+$result = $check->get_result();
+if ($result->num_rows > 0) {
+    echo "⚠️ Admin already exists with email: $email";
+    exit;
+}
+$check->close();
 
-// --- Hash the password ---
-$pwd_hash = password_hash($password, PASSWORD_DEFAULT);
+// === CREATE PASSWORD HASH ===
+$pwd_hash = password_hash($password_plain, PASSWORD_DEFAULT);
 
-// --- Insert into users table ---
+// === GENERATE UNIQUE USER CODE ===
+$get_last = $mysqli->query("SELECT id FROM users ORDER BY id DESC LIMIT 1");
+$last_id = $get_last->num_rows > 0 ? $get_last->fetch_assoc()['id'] + 1 : 1;
+$user_code = $role_prefix . str_pad($last_id, 4, "0", STR_PAD_LEFT); // Example: A0001
+
+// === INSERT ADMIN USER ===
 $stmt = $mysqli->prepare("
-    INSERT INTO users 
-        (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, cell_group_id, cell_leader, created_at, role_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NOW(), ?)
+    INSERT INTO users (user_code, firstname, lastname, contact, age, user_address, email, pwd_hash, role_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
 ");
-
-$stmt->bind_param(
-    "sssissssi",
-    $firstname,
-    $lastname,
-    $suffix,
-    $contact,
-    $age,
-    $user_address,
-    $email,
-    $pwd_hash,
-    $role_id
-);
+$stmt->bind_param("ssssisssi", $user_code, $firstname, $lastname, $contact, $age, $user_address, $email, $pwd_hash, $role_id);
 
 if ($stmt->execute()) {
-    echo '<h2 style="color:green;font-family:monospace;"> Admin account created successfully!</h2>';
-    echo '<p>Email: <strong>' . htmlspecialchars($email) . '</strong></p>';
-    echo '<p>Password: <strong>' . htmlspecialchars($password) . '</strong></p>';
+    echo "✅ Admin account created successfully!<br>";
+    echo "📧 Email: <b>$email</b><br>";
+    echo "🔑 Password: <b>$password_plain</b><br>";
+    echo "🆔 User Code: <b>$user_code</b><br>";
+    echo "<br>👉 You can now log in with this account to access all admin pages.";
 } else {
-    echo '<h2 style="color:red;">❌ Error:</h2> ' . htmlspecialchars($stmt->error);
+    echo "❌ Error creating admin: " . $stmt->error;
 }
 
 $stmt->close();
-$mysqli->close();
 ?>
