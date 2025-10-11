@@ -4,6 +4,7 @@ include 'auth_check.php';
 restrict_to_roles([ROLE_ADMIN]);
 
 $group_id = $_GET['group_id'] ?? 0;
+$search = trim($_GET['search'] ?? '');
 
 // ✅ Handle member unassignment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unassign_member'])) {
@@ -48,8 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['move_member'])) {
 
     if ($new_leader) {
         $leader_id = $new_leader['leader_id'];
-
-        // Update user's leader_id and cell_group_id
         $move = $mysqli->prepare("UPDATE users SET leader_id = ?, cell_group_id = ? WHERE id = ?");
         $move->bind_param("iii", $leader_id, $new_group_id, $member_id);
         $move->execute();
@@ -78,6 +77,16 @@ $group = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 // ✅ Fetch all members of this group
+$search_condition = '';
+if (!empty($search)) {
+    $search_condition = "AND (
+        u.firstname LIKE '%$search%' OR 
+        u.lastname LIKE '%$search%' OR 
+        u.email LIKE '%$search%' OR 
+        u.user_code LIKE '%$search%'
+    )";
+}
+
 $members = $mysqli->query("
     SELECT 
         u.id,
@@ -89,6 +98,7 @@ $members = $mysqli->query("
     JOIN users u ON cgm.member_id = u.id
     JOIN roles r ON u.role_id = r.role_id
     WHERE cgm.cell_group_id = $group_id
+    $search_condition
     ORDER BY u.lastname ASC
 ");
 
@@ -128,6 +138,29 @@ select.move-select { padding:6px; border-radius:6px; border:1px solid #ccc; }
     text-decoration:none; display:inline-block; margin-top:20px;
 }
 .back-btn:hover { background:#02589b; }
+.search-bar {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:15px;
+}
+.search-bar input {
+    flex:1;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+.search-bar button {
+    background:#0271c0;
+    color:white;
+    border:none;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+}
+.search-bar button:hover {
+    background:#02589b;
+}
 </style>
 </head>
 <body>
@@ -142,6 +175,16 @@ select.move-select { padding:6px; border-radius:6px; border:1px solid #ccc; }
 
             <?php if(isset($success)): ?><div class="success"><?= $success ?></div><?php endif; ?>
             <?php if(isset($error)): ?><div class="error"><?= $error ?></div><?php endif; ?>
+
+            <!-- 🔍 Search Bar -->
+            <form method="GET" class="search-bar">
+                <input type="hidden" name="group_id" value="<?= htmlspecialchars($group_id) ?>">
+                <input type="text" name="search" placeholder="Search by name, email, or user code..." value="<?= htmlspecialchars($search) ?>">
+                <button type="submit">Search</button>
+                <?php if (!empty($search)): ?>
+                    <a href="cell_group_view.php?group_id=<?= $group_id ?>" style="text-decoration:none; background:#ccc; color:black; padding:8px 12px; border-radius:8px;">Reset</a>
+                <?php endif; ?>
+            </form>
 
             <table>
                 <thead>

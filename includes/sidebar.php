@@ -23,11 +23,37 @@
             <li><a href="evangelism_records.php" class="<?= basename($_SERVER['PHP_SELF']) == 'evangelism_records.php' ? 'active' : '' ?>"><span>📖</span> Evangelism Records</a></li>
         <?php endif; ?>
 
+         <?php if (can_access([ROLE_MEMBER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Cell Groups</li>
+            <li><a href="cell_group_member.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ccell_group_member.php' ? 'active' : '' ?>"><span>👥</span> My Cell Group</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_LEADER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Cell Groups</li>
+            <li><a href="cell_group_leader.php" class="<?= basename($_SERVER['PHP_SELF']) == 'ccell_group_leader.php' ? 'active' : '' ?>"><span>👥</span> My Cell Group</a></li>
+        <?php endif; ?>
+
+        <?php if (can_access([ROLE_LEADER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Cell Groups</li>
+            <li><a href="cell_group_attendance.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_attendance.php' ? 'active' : '' ?>"><span>👥</span> Cell Group Attendance</a></li>
+        <?php endif; ?>
+
+
+        <?php if (can_access([ROLE_LEADER])): ?>
+        <li class="nav-divider"></li>
+            <li class="nav-section">Cell Groups</li>
+            <li><a href="cell_group_attendance.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_attendance.php' ? 'active' : '' ?>"><span>👥</span> Cell Group</a></li>
+        <?php endif; ?>
+
          <?php if (can_access([ROLE_LEADER, ROLE_ATTENDANCE_MARKER])): ?>
         <li class="nav-divider"></li>
             <li class="nav-section">Cell Groups</li>
             <li><a href="cell_group.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group.php' ? 'active' : '' ?>"><span>👥</span> Cell Group</a></li>
         <?php endif; ?>
+
 
         <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
         <li class="nav-divider"></li>
