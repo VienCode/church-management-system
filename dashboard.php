@@ -72,14 +72,23 @@ if ($dResult) {
 $donationTrend = array_reverse($donationTrend);
 
 // ---- Uploads Summary ----
-$uploadsSummary = [
-    'file_count' => 0
-];
-$uploadsQuery = "SELECT COUNT(*) as total FROM posts";
-$upResult = $mysqli->query($uploadsQuery);
-if ($upResult && $row = $upResult->fetch_assoc()) {
-    $uploadsSummary['file_count'] = $row['total'];
-}
+// Fetch pinned announcements (always on top)
+$pinned_updates = $mysqli->query("
+    SELECT title, description, image_path, posted_by_name, created_at
+    FROM church_updates
+    WHERE is_archived = 0 AND is_pinned = 1
+    ORDER BY created_at DESC
+");
+
+// Fetch latest 3 non-pinned announcements
+$recent_updates = $mysqli->query("
+    SELECT title, description, image_path, posted_by_name, created_at
+    FROM church_updates
+    WHERE is_archived = 0 AND is_pinned = 0
+    ORDER BY created_at DESC
+    LIMIT 3
+");
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,12 +138,52 @@ if ($upResult && $row = $upResult->fetch_assoc()) {
             </div>
         </div>
 
-        <!-- Charts Section -->
-        <h2>Trends</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <canvas id="attendanceChart"></canvas>
-            <canvas id="donationsChart"></canvas>
+        <!-- 📢 Church Announcements Section -->
+<div class="announcement-container">
+    <h2>📢 Church Announcements</h2>
+    <p>Stay updated with the latest church news and events.</p>
+
+    <!-- 🧷 Pinned Posts -->
+    <?php if ($pinned_updates->num_rows > 0): ?>
+        <h3 style="margin-top:25px; color:#d39e00;">📌 Pinned Announcements</h3>
+        <div class="announcement-grid">
+            <?php while ($p = $pinned_updates->fetch_assoc()): ?>
+                <div class="announcement-card pinned">
+                    <?php if ($p['image_path']): ?>
+                        <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Announcement">
+                    <?php endif; ?>
+                    <div class="announcement-body">
+                        <h4><?= htmlspecialchars($p['title']) ?></h4>
+                        <p><?= nl2br(htmlspecialchars(substr($p['description'], 0, 120))) ?><?= strlen($p['description']) > 120 ? '...' : '' ?></p>
+                        <small>Posted by <?= htmlspecialchars($p['posted_by_name']) ?> on <?= date('F j, Y', strtotime($p['created_at'])) ?></small>
+                    </div>
+                </div>
+            <?php endwhile; ?>
         </div>
+    <?php endif; ?>
+
+    <!-- 🆕 Latest Announcements -->
+    <?php if ($recent_updates->num_rows > 0): ?>
+        <h3 style="margin-top:30px;">📰 Latest Announcements</h3>
+        <div class="announcement-grid">
+            <?php while ($r = $recent_updates->fetch_assoc()): ?>
+                <div class="announcement-card">
+                    <?php if ($r['image_path']): ?>
+                        <img src="<?= htmlspecialchars($r['image_path']) ?>" alt="Announcement">
+                    <?php endif; ?>
+                    <div class="announcement-body">
+                        <h4><?= htmlspecialchars($r['title']) ?></h4>
+                        <p><?= nl2br(htmlspecialchars(substr($r['description'], 0, 120))) ?><?= strlen($r['description']) > 120 ? '...' : '' ?></p>
+                        <small>Posted by <?= htmlspecialchars($r['posted_by_name']) ?> on <?= date('F j, Y', strtotime($r['created_at'])) ?></small>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    <?php else: ?>
+        <p style="color:#555;">No announcements yet.</p>
+    <?php endif; ?>
+</div>
+
     </div>
 </div>
 
