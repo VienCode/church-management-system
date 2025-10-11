@@ -6,7 +6,7 @@ restrict_to_roles([ROLE_ADMIN]);
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $user_id = intval($_POST["user_id"]);
 
-    // Get user info
+    // Fetch leader info
     $stmt = $mysqli->prepare("SELECT firstname, lastname, email, user_code, role_id FROM users WHERE id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -27,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
         exit();
     }
 
-    // Find leader_id in leaders table
+    // Find leader_id
     $leader_stmt = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? AND status = 'active'");
     $leader_stmt->bind_param("s", $email);
     $leader_stmt->execute();
@@ -35,17 +35,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $leader_stmt->close();
     $leader_id = $leader['leader_id'] ?? null;
 
-    // Disable foreign key checks to prevent cascading trigger locks
-    $mysqli->query("SET FOREIGN_KEY_CHECKS = 0");
-
-    // Update user role and code safely
+    // ✅ Change L → M code safely
     $new_code = preg_replace('/^L/', 'M', $old_code);
-    if ($new_code === $old_code) $new_code = 'M' . substr($old_code, 1);
+    if ($new_code === $old_code) {
+        $new_code = 'M' . substr($old_code, 1);
+    }
 
+    // ✅ Demote and preserve membership status
     $update = $mysqli->prepare("
         UPDATE users 
-        SET role_id = 3, 
-            user_code = ?, 
+        SET role_id = 3,
+            user_code = ?,
             leader_id = NULL,
             is_cell_member = 1
         WHERE id = ?
@@ -54,10 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $update->execute();
     $update->close();
 
-    // Re-enable FK checks
-    $mysqli->query("SET FOREIGN_KEY_CHECKS = 1");
-
-    // Unassign their members and deactivate group
+    // ✅ Unassign and deactivate
     if ($leader_id) {
         $unassign = $mysqli->prepare("UPDATE users SET leader_id = NULL WHERE leader_id = ?");
         $unassign->bind_param("i", $leader_id);
@@ -68,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
         $mysqli->query("UPDATE cell_groups SET status = 'inactive', archived_at = NOW() WHERE leader_id = $leader_id");
     }
 
-    // Log demotion
+    // ✅ Log the action
     $admin_id = $_SESSION['user_id'];
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
@@ -78,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted successfully and removed as a leader.");
+    header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted successfully. Their group and leadership have been deactivated.");
     exit();
 }
 
