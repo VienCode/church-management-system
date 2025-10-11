@@ -53,13 +53,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     if ($check_leader->num_rows === 0) {
         $check_leader->close();
 
-        $insert_leader = $mysqli->prepare("
-            INSERT INTO leaders (leader_name, email, contact, created_at)
+      $insertLeader = $mysqli->prepare("
+            INSERT INTO leaders (leader_name, contact, email, created_at)
             VALUES (?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE leader_name = VALUES(leader_name), contact = VALUES(contact)
         ");
-        $insert_leader->bind_param("sss", $fullname, $email, $contact);
-        $insert_leader->execute();
-        $insert_leader->close();
+        $fullname = $user['firstname'] . ' ' . $user['lastname'];
+        $insertLeader->bind_param("sss", $fullname, $user['contact'], $user['email']);
+        $insertLeader->execute();
     } else {
         $check_leader->close();
     }

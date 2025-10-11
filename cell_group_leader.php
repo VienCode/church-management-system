@@ -1,142 +1,219 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_LEADER]);
+restrict_to_roles([ROLE_LEADER]); // Leader-only access
 
+// Get logged-in leader session info
 $leader_email = $_SESSION['email'] ?? null;
+$leader_id = null;
 
-// Get leader info
-$stmt = $mysqli->prepare("SELECT leader_id, leader_name FROM leaders WHERE email = ?");
+// Fetch the leader from the leaders table
+$stmt = $mysqli->prepare("SELECT leader_id, leader_name FROM leaders WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))");
 $stmt->bind_param("s", $leader_email);
 $stmt->execute();
 $leader = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+// 🧩 AUTO-REGISTRATION FALLBACK
+if (!$leader && $_SESSION['role_id'] == ROLE_LEADER) {
+    $fullname = $_SESSION['firstname'] . ' ' . $_SESSION['lastname'];
+    $email = $_SESSION['email'];
+    $contact = $_SESSION['contact'] ?? '';
+
+    // Insert missing leader record safely
+    $insert = $mysqli->prepare("
+        INSERT INTO leaders (leader_name, email, contact, created_at)
+        VALUES (?, ?, ?, NOW())
+    ");
+    $insert->bind_param("sss", $fullname, $email, $contact);
+    $insert->execute();
+    $insert->close();
+
+    // Redirect to reload page and refresh leader info
+    header("Location: cell_group_leader.php");
+    exit;
+}
+
+// If leader still not found after insertion (very rare)
 if (!$leader) {
-    echo "<div style='background:#ffe6e6;color:#a11b1b;padding:15px;border-radius:8px;'>❌ This leader is not registered in the leaders table.</div>";
-    exit();
+    echo "<h2 style='color:red; text-align:center;'>❌ Leader record not found or could not be created.</h2>";
+    exit;
 }
 
 $leader_id = $leader['leader_id'];
 
-// Get group info
-$stmt = $mysqli->prepare("SELECT id, group_name FROM cell_groups WHERE leader_id = ?");
-$stmt->bind_param("i", $leader_id);
-$stmt->execute();
-$group = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+// Fetch cell group for this leader
+$group_stmt = $mysqli->prepare("
+    SELECT c.id AS group_id, c.group_name
+    FROM cell_groups c
+    WHERE c.leader_id = ?
+");
+$group_stmt->bind_param("i", $leader_id);
+$group_stmt->execute();
+$group = $group_stmt->get_result()->fetch_assoc();
+$group_stmt->close();
 
 if (!$group) {
-    echo "<div style='background:#ffe6e6;color:#a11b1b;padding:15px;border-radius:8px;'>❌ No cell group assigned to you yet.</div>";
-    exit();
+    echo "<h2 style='text-align:center; color:#555;'>ℹ️ You are not yet assigned to any Cell Group.</h2>";
+    exit;
 }
 
-$group_id = $group['id'];
+$group_id = $group['group_id'];
+$group_name = $group['group_name'];
 
 // Handle new meeting creation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
-    $title = $_POST['title'];
-    $description = $_POST['description'];
-    $date = $_POST['meeting_date'];
+    $title = trim($_POST['title']);
+    $description = trim($_POST['description']);
+    $meeting_date = $_POST['meeting_date'];
 
-    $stmt = $mysqli->prepare("INSERT INTO cell_group_meetings (cell_group_id, title, description, meeting_date) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("isss", $group_id, $title, $description, $date);
-    $stmt->execute();
-    $stmt->close();
+    $insert_meeting = $mysqli->prepare("
+        INSERT INTO cell_group_meetings (cell_group_id, title, description, meeting_date)
+        VALUES (?, ?, ?, ?)
+    ");
+    $insert_meeting->bind_param("isss", $group_id, $title, $description, $meeting_date);
+    $insert_meeting->execute();
+    $insert_meeting->close();
 
-    $msg = "✅ Meeting created successfully!";
+    $success = "✅ Meeting added successfully!";
 }
 
-// Fetch group members
-$members = $mysqli->prepare("
-    SELECT u.id, u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email
-    FROM cell_group_members cgm
-    JOIN users u ON cgm.member_id = u.id
-    WHERE cgm.cell_group_id = ?
+// Fetch all members of this leader’s cell group
+$members_stmt = $mysqli->prepare("
+    SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
+    FROM cell_group_members m
+    JOIN users u ON m.member_id = u.id
+    WHERE m.cell_group_id = ?
     ORDER BY u.lastname ASC
 ");
-$members->bind_param("i", $group_id);
-$members->execute();
-$members_result = $members->get_result();
+$members_stmt->bind_param("i", $group_id);
+$members_stmt->execute();
+$members = $members_stmt->get_result();
 
-// Fetch meetings
-$meetings = $mysqli->prepare("
-    SELECT id, title, description, meeting_date 
-    FROM cell_group_meetings 
-    WHERE cell_group_id = ? 
+// Fetch meetings for this leader’s cell group
+$meetings_stmt = $mysqli->prepare("
+    SELECT id, title, description, meeting_date
+    FROM cell_group_meetings
+    WHERE cell_group_id = ?
     ORDER BY meeting_date DESC
 ");
-$meetings->bind_param("i", $group_id);
-$meetings->execute();
-$meetings_result = $meetings->get_result();
+$meetings_stmt->bind_param("i", $group_id);
+$meetings_stmt->execute();
+$meetings = $meetings_stmt->get_result();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cell Group - Leader View</title>
+<title>📅 My Cell Group | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.container { background:#fff;padding:20px;border-radius:10px;margin:30px auto;max-width:1150px;box-shadow:0 2px 10px rgba(0,0,0,.08); }
-table { width:100%;border-collapse:collapse;margin-top:15px; }
-th, td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
-th { background:#0271c0; color:white; }
-h2 { color:#0271c0; }
-.btn { background:#0271c0; color:white; padding:8px 14px; border:none; border-radius:6px; cursor:pointer; }
-.btn:hover { background:#02589b; }
+.cell-container {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 1100px;
+    margin: 30px auto;
+}
+.section-title {
+    color: #0271c0;
+    border-bottom: 2px solid #0271c0;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #e6e6e6;
+    text-align: center;
+}
+th { background: #0271c0; color: white; }
+.save-btn { background:#0271c0; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
+.save-btn:hover { background:#02589b; }
+.success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:600; }
 </style>
 </head>
+
 <body>
 <div class="main-layout">
-    <?php include __DIR__.'/includes/sidebar.php'; ?>
-    <div class="content-area">
-        <div class="container">
-            <h2>📋 <?= htmlspecialchars($group['group_name']) ?> - Leader Panel</h2>
-            <?php if(isset($msg)): ?><div class="success"><?= $msg ?></div><?php endif; ?>
+   <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
-            <h3>🗓️ Add New Meeting</h3>
+   <div class="content-area">
+      <div class="cell-container">
+         <h1>📅 My Cell Group</h1>
+         <p>Welcome, <strong><?= htmlspecialchars($leader['leader_name']) ?></strong>! You’re managing <strong><?= htmlspecialchars($group_name) ?></strong>.</p>
+
+         <?php if (!empty($success)): ?>
+            <div class="success"><?= $success ?></div>
+         <?php endif; ?>
+
+         <!-- Add Meeting -->
+         <section>
+            <h2 class="section-title">➕ Add New Meeting</h2>
             <form method="POST">
-                <input type="text" name="title" placeholder="Meeting Title" required>
-                <textarea name="description" placeholder="Description" required></textarea>
-                <input type="date" name="meeting_date" required>
-                <button type="submit" name="add_meeting" class="btn">Add Meeting</button>
+               <label>Meeting Title:</label><br>
+               <input type="text" name="title" required style="width:100%; padding:8px; margin-bottom:10px;"><br>
+               <label>Description:</label><br>
+               <textarea name="description" rows="3" style="width:100%; padding:8px; margin-bottom:10px;"></textarea><br>
+               <label>Date:</label><br>
+               <input type="date" name="meeting_date" required style="padding:8px; margin-bottom:10px;"><br>
+               <button type="submit" name="add_meeting" class="save-btn">💾 Save Meeting</button>
             </form>
+         </section>
 
-            <h3>👥 Members</h3>
-            <table>
-                <thead><tr><th>User Code</th><th>Name</th><th>Email</th></tr></thead>
-                <tbody>
-                    <?php if($members_result->num_rows == 0): ?>
-                        <tr><td colspan="3">No members assigned to this group yet.</td></tr>
-                    <?php else: while($m = $members_result->fetch_assoc()): ?>
+         <!-- Meeting List -->
+         <section style="margin-top:30px;">
+            <h2 class="section-title">📅 Meetings</h2>
+            <?php if ($meetings->num_rows === 0): ?>
+               <p>No meetings scheduled yet.</p>
+            <?php else: ?>
+               <table>
+                  <thead>
+                     <tr><th>Date</th><th>Title</th><th>Description</th><th>Mark Attendance</th></tr>
+                  </thead>
+                  <tbody>
+                     <?php while ($meeting = $meetings->fetch_assoc()): ?>
                         <tr>
-                            <td><?= $m['user_code'] ?></td>
-                            <td><?= $m['fullname'] ?></td>
-                            <td><?= $m['email'] ?></td>
+                           <td><?= htmlspecialchars(date('F j, Y', strtotime($meeting['meeting_date']))) ?></td>
+                           <td><?= htmlspecialchars($meeting['title']) ?></td>
+                           <td><?= htmlspecialchars($meeting['description']) ?></td>
+                           <td><a href="cell_group_attendance.php?meeting_id=<?= $meeting['id'] ?>" class="save-btn">📝 Mark Attendance</a></td>
                         </tr>
-                    <?php endwhile; endif; ?>
-                </tbody>
-            </table>
+                     <?php endwhile; ?>
+                  </tbody>
+               </table>
+            <?php endif; ?>
+         </section>
 
-            <h3>📅 Meetings</h3>
-            <table>
-                <thead><tr><th>Title</th><th>Description</th><th>Date</th><th>Attendance</th></tr></thead>
-                <tbody>
-                    <?php if($meetings_result->num_rows == 0): ?>
-                        <tr><td colspan="4">No meetings found.</td></tr>
-                    <?php else: while($meeting = $meetings_result->fetch_assoc()): ?>
+         <!-- Members List -->
+         <section style="margin-top:30px;">
+            <h2 class="section-title">👥 Members</h2>
+            <?php if ($members->num_rows === 0): ?>
+               <p>No members assigned to your group yet.</p>
+            <?php else: ?>
+               <table>
+                  <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
+                  <tbody>
+                     <?php while ($m = $members->fetch_assoc()): ?>
                         <tr>
-                            <td><?= htmlspecialchars($meeting['title']) ?></td>
-                            <td><?= htmlspecialchars($meeting['description']) ?></td>
-                            <td><?= htmlspecialchars($meeting['meeting_date']) ?></td>
-                            <td><a href="cell_group_attendance.php?meeting_id=<?= $meeting['id'] ?>" class="btn">Mark Attendance</a></td>
+                           <td><?= htmlspecialchars($m['user_code']) ?></td>
+                           <td><?= htmlspecialchars($m['fullname']) ?></td>
+                           <td><?= htmlspecialchars($m['email']) ?></td>
+                           <td><?= htmlspecialchars($m['contact']) ?></td>
                         </tr>
-                    <?php endwhile; endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
+                     <?php endwhile; ?>
+                  </tbody>
+               </table>
+            <?php endif; ?>
+         </section>
+      </div>
+   </div>
 </div>
 </body>
 </html>

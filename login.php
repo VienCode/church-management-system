@@ -36,6 +36,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["firstname"] = $user["firstname"];
         $_SESSION["lastname"] = $user["lastname"];
         $_SESSION["role_id"] = $user["role_id"];
+        $_SESSION["email"] = $user["email"];
+
 
         switch ($_SESSION["role_id"]) {
             case 1: // Admin
