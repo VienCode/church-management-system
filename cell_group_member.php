@@ -1,121 +1,156 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_LEADER, ROLE_ADMIN]);
+restrict_to_roles([ROLE_ADMIN]);
 
-$user_email = $_SESSION['email'] ?? '';
-$fullname = $_SESSION['firstname'] . ' ' . $_SESSION['lastname'];
-
-// ✅ Fetch leader ID
-$leader_stmt = $mysqli->prepare("SELECT leader_id, leader_name FROM leaders WHERE email = ? AND status = 'active' LIMIT 1");
-$leader_stmt->bind_param("s", $user_email);
-$leader_stmt->execute();
-$leader = $leader_stmt->get_result()->fetch_assoc();
-$leader_stmt->close();
-
-if (!$leader) {
-    echo "<h2 style='text-align:center;color:red;'>❌ You are not registered as an active leader.</h2>";
-    exit;
-}
-
-$leader_id = $leader['leader_id'];
-
-// ✅ Fetch the leader's cell group
-$group_stmt = $mysqli->prepare("SELECT id, group_name FROM cell_groups WHERE leader_id = ? AND status = 'active' LIMIT 1");
-$group_stmt->bind_param("i", $leader_id);
-$group_stmt->execute();
-$group = $group_stmt->get_result()->fetch_assoc();
-$group_stmt->close();
-
-if (!$group) {
-    echo "<h2 style='text-align:center;color:#555;'>ℹ️ You are not yet assigned to any Cell Group.</h2>";
-    exit;
-}
-
-$group_id = $group['id'];
-$group_name = $group['group_name'];
-
-// ✅ Add meeting
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
-    $title = trim($_POST['title']);
-    $desc = trim($_POST['description']);
-    $date = $_POST['meeting_date'];
-
-    $stmt = $mysqli->prepare("INSERT INTO cell_group_meetings (cell_group_id, title, description, meeting_date) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("isss", $group_id, $title, $desc, $date);
-    $stmt->execute();
-    $stmt->close();
-    $success = "✅ Meeting added successfully!";
-}
-
-// ✅ Fetch meetings
-$meetings = $mysqli->query("SELECT * FROM cell_group_meetings WHERE cell_group_id = $group_id ORDER BY meeting_date DESC");
-
-// ✅ Fetch members
-$members = $mysqli->query("
-    SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
-    FROM cell_group_members m
-    JOIN users u ON m.member_id = u.id
-    WHERE m.cell_group_id = $group_id
+$sql = "
+    SELECT 
+        u.id, 
+        u.user_code, 
+        u.firstname, 
+        u.lastname, 
+        u.email, 
+        u.contact,
+        DATE_FORMAT(u.last_unassigned_at, '%M %e, %Y %h:%i %p') AS last_unassigned_at
+    FROM users u
+    WHERE u.role_id = 3
+      AND (u.leader_id IS NULL OR u.leader_id = 0 OR u.leader_id = '')
+      AND (u.is_cell_member = 1 OR u.is_cell_member = 0 OR u.is_cell_member IS NULL)
     ORDER BY u.lastname ASC
-");
+";
+
+$result = $mysqli->query($sql);
+$members = $result->fetch_all(MYSQLI_ASSOC);
+
+// Fetch leaders
+$leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC")->fetch_all(MYSQLI_ASSOC);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>📅 My Cell Group</title>
+<title>Unassigned Members | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.cell-container { background:#fff;padding:25px;border-radius:12px;max-width:1100px;margin:30px auto;box-shadow:0 2px 10px rgba(0,0,0,.1);}
-.save-btn{background:#0271c0;color:#fff;padding:8px 12px;border:none;border-radius:8px;cursor:pointer;}
-.section-title{color:#0271c0;border-bottom:2px solid #0271c0;padding-bottom:5px;margin-bottom:10px;}
+.container { background:#fff; padding:25px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); max-width:1000px; margin:30px auto; }
+.success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:bold; display:none; transition:all 0.5s ease; }
+select, button { padding:8px 12px; border-radius:6px; border:1px solid #ccc; }
+.assign-btn { background:#0271c0; color:white; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:600; }
+.assign-btn:hover { background:#02589b; }
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
+th { background:#0271c0; color:white; }
+.checkbox { transform:scale(1.3); cursor:pointer; }
+.fade-out { opacity:0; transition:opacity 0.8s ease; }
 </style>
 </head>
+
 <body>
 <div class="main-layout">
-<?php include __DIR__.'/includes/sidebar.php'; ?>
-<div class="content-area">
-<div class="cell-container">
-<h1>📅 <?= htmlspecialchars($group_name) ?></h1>
-<?php if(isset($success)) echo "<div class='success'>$success</div>"; ?>
-<form method="POST">
-<h2 class="section-title">➕ Add New Meeting</h2>
-<input type="text" name="title" placeholder="Meeting Title" required style="width:100%;padding:8px;"><br><br>
-<textarea name="description" placeholder="Description" style="width:100%;padding:8px;"></textarea><br><br>
-<input type="date" name="meeting_date" required><br><br>
-<button type="submit" name="add_meeting" class="save-btn">💾 Save Meeting</button>
-</form>
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+    <div class="content-area">
+        <div class="container">
+            <h1>🔄 Reassign Unassigned Members</h1>
+            <p>These members currently have no assigned leader. Select one or more and assign them below.</p>
 
-<h2 class="section-title">📋 Meetings</h2>
-<?php if ($meetings->num_rows==0): ?>
-<p>No meetings yet.</p>
-<?php else: ?>
-<table>
-<tr><th>Date</th><th>Title</th><th>Description</th><th>Actions</th></tr>
-<?php while($m=$meetings->fetch_assoc()): ?>
-<tr>
-<td><?= htmlspecialchars(date('F j, Y', strtotime($m['meeting_date']))) ?></td>
-<td><?= htmlspecialchars($m['title']) ?></td>
-<td><?= htmlspecialchars($m['description']) ?></td>
-<td><a href="cell_group_attendance.php?meeting_id=<?= $m['id'] ?>" class="save-btn">📝 Mark Attendance</a></td>
-</tr>
-<?php endwhile; ?>
-</table>
-<?php endif; ?>
+            <div class="success" id="successMessage">✅ Members reassigned successfully!</div>
 
-<h2 class="section-title">👥 Members</h2>
-<?php if ($members->num_rows==0): ?>
-<p>No members assigned yet.</p>
-<?php else: ?>
-<table><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr>
-<?php while($m=$members->fetch_assoc()): ?>
-<tr>
-<td><?= htmlspecialchars($m['user_code']) ?></td>
-<td><?= htmlspecialchars($m['fullname']) ?></td>
-<td><?= htmlspecialchars($m['email']) ?></td>
-<td><?= htmlspecialchars($m['contact']) ?></td>
-</tr>
-<?php endwhile; ?></table>
-<?php endif; ?>
-</div></div></div></body></html>
+            <!-- Bulk Assignment -->
+            <div style="margin-bottom:10px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+                <label><strong>Select Leader:</strong></label>
+                <select id="bulkLeaderSelect">
+                    <option value="" disabled selected>Select Leader</option>
+                    <?php foreach ($leaders as $l): ?>
+                        <option value="<?= $l['leader_id'] ?>"><?= htmlspecialchars($l['leader_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="assign-btn" id="bulkAssignBtn">Assign Selected Members</button>
+            </div>
+
+            <!-- Table -->
+            <?php if (empty($members)): ?>
+                <p>No unassigned members found.</p>
+            <?php else: ?>
+                <form id="bulkAssignForm">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll" class="checkbox"></th>
+                                <th>#</th>
+                                <th>User Code</th>
+                                <th>Full Name</th>
+                                <th>Unassigned Since</th>
+                                <th>Assign</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $i=1; foreach ($members as $m): ?>
+                                <tr id="row_<?= $m['id'] ?>">
+                                    <td><input type="checkbox" class="member-checkbox checkbox" value="<?= $m['id'] ?>"></td>
+                                    <td><?= $i++ ?></td>
+                                    <td><?= htmlspecialchars($m['user_code']) ?></td>
+                                    <td><?= htmlspecialchars($m['firstname'].' '.$m['lastname']) ?></td>
+                                    <td><?= htmlspecialchars($m['last_unassigned_at'] ?? '-') ?></td>
+                                    <td>
+                                        <select class="singleLeaderSelect">
+                                            <option value="" disabled selected>Select Leader</option>
+                                            <?php foreach ($leaders as $l): ?>
+                                                <option value="<?= $l['leader_id'] ?>"><?= htmlspecialchars($l['leader_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="button" class="assign-btn singleAssignBtn" data-member="<?= $m['id'] ?>">Assign</button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </form>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = this.checked);
+});
+
+async function assignMembers(leaderId, memberIds) {
+    const msgBox = document.getElementById('successMessage');
+    const formData = new FormData();
+    formData.append('leader_id', leaderId);
+    formData.append('member_ids', JSON.stringify(memberIds));
+
+    const response = await fetch('unassigned_members_assign.php', { method: 'POST', body: formData });
+    const result = await response.json();
+
+    if (result.success) {
+        msgBox.textContent = result.message;
+        msgBox.style.display = 'block';
+        memberIds.forEach(id => {
+            const row = document.getElementById('row_' + id);
+            if (row) { row.classList.add('fade-out'); setTimeout(() => row.remove(), 800); }
+        });
+    } else alert('❌ ' + result.message);
+}
+
+document.getElementById('bulkAssignBtn')?.addEventListener('click', () => {
+    const leaderId = document.getElementById('bulkLeaderSelect').value;
+    const selected = [...document.querySelectorAll('.member-checkbox:checked')].map(cb => cb.value);
+    if (!leaderId) return alert('⚠️ Select a leader first.');
+    if (selected.length === 0) return alert('⚠️ Select at least one member.');
+    assignMembers(leaderId, selected);
+});
+
+document.querySelectorAll('.singleAssignBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const leaderId = btn.previousElementSibling.value;
+        const memberId = btn.dataset.member;
+        if (!leaderId) return alert('⚠️ Select a leader.');
+        assignMembers(leaderId, [memberId]);
+    });
+});
+</script>
+</body>
+</html>

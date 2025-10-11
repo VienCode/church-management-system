@@ -13,19 +13,16 @@ $sql = "
         u.contact,
         DATE_FORMAT(u.last_unassigned_at, '%M %e, %Y %h:%i %p') AS last_unassigned_at
     FROM users u
-    WHERE u.role_id = 3 -- Only members
-      AND u.is_cell_member = 1 -- must be cell members
+    WHERE u.role_id = 3
       AND (u.leader_id IS NULL OR u.leader_id = 0 OR u.leader_id = '')
+      AND (u.is_cell_member = 1 OR u.is_cell_member = 0 OR u.is_cell_member IS NULL)
     ORDER BY u.lastname ASC
 ";
-
-
-
 
 $result = $mysqli->query($sql);
 $members = $result->fetch_all(MYSQLI_ASSOC);
 
-// Fetch leaders for assignment
+// Fetch leaders
 $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC")->fetch_all(MYSQLI_ASSOC);
 ?>
 
@@ -36,68 +33,22 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
 <title>Unassigned Members | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.container {
-    background: #fff;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    max-width: 1000px;
-    margin: 30px auto;
-}
-.success {
-    background: #e6ffed;
-    color: #256029;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    font-weight: bold;
-    display: none;
-    transition: all 0.5s ease;
-}
-select, button {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-.assign-btn {
-    background: #0271c0;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
-    cursor: pointer;
-    font-weight: 600;
-}
-.assign-btn:hover { background: #02589b; }
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-th, td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e6e6e6;
-    text-align: center;
-}
-th {
-    background: #0271c0;
-    color: white;
-}
-.checkbox {
-    transform: scale(1.3);
-    cursor: pointer;
-}
-.fade-out {
-    opacity: 0;
-    transition: opacity 0.8s ease;
-}
+.container { background:#fff; padding:25px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); max-width:1000px; margin:30px auto; }
+.success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:bold; display:none; transition:all 0.5s ease; }
+select, button { padding:8px 12px; border-radius:6px; border:1px solid #ccc; }
+.assign-btn { background:#0271c0; color:white; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:600; }
+.assign-btn:hover { background:#02589b; }
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th, td { padding:10px 12px; border-bottom:1px solid #e6e6e6; text-align:center; }
+th { background:#0271c0; color:white; }
+.checkbox { transform:scale(1.3); cursor:pointer; }
+.fade-out { opacity:0; transition:opacity 0.8s ease; }
 </style>
 </head>
 
 <body>
 <div class="main-layout">
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
-
     <div class="content-area">
         <div class="container">
             <h1>🔄 Reassign Unassigned Members</h1>
@@ -105,7 +56,7 @@ th {
 
             <div class="success" id="successMessage">✅ Members reassigned successfully!</div>
 
-            <!-- Bulk Assignment Section -->
+            <!-- Bulk Assignment -->
             <div style="margin-bottom:10px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
                 <label><strong>Select Leader:</strong></label>
                 <select id="bulkLeaderSelect">
@@ -117,7 +68,7 @@ th {
                 <button class="assign-btn" id="bulkAssignBtn">Assign Selected Members</button>
             </div>
 
-            <!-- Members Table -->
+            <!-- Table -->
             <?php if (empty($members)): ?>
                 <p>No unassigned members found.</p>
             <?php else: ?>
@@ -161,13 +112,10 @@ th {
 </div>
 
 <script>
-// ✅ Select all checkboxes
 document.getElementById('selectAll')?.addEventListener('change', function() {
-    const checked = this.checked;
-    document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = checked);
+    document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = this.checked);
 });
 
-// ✅ AJAX Assign function
 async function assignMembers(leaderId, memberIds) {
     const msgBox = document.getElementById('successMessage');
     const formData = new FormData();
@@ -178,19 +126,15 @@ async function assignMembers(leaderId, memberIds) {
     const result = await response.json();
 
     if (result.success) {
-        msgBox.textContent = '✅ ' + result.message;
+        msgBox.textContent = result.message;
         msgBox.style.display = 'block';
         memberIds.forEach(id => {
             const row = document.getElementById('row_' + id);
-            if (row) {
-                row.classList.add('fade-out');
-                setTimeout(() => row.remove(), 800);
-            }
+            if (row) { row.classList.add('fade-out'); setTimeout(() => row.remove(), 800); }
         });
     } else alert('❌ ' + result.message);
 }
 
-// ✅ Bulk assignment
 document.getElementById('bulkAssignBtn')?.addEventListener('click', () => {
     const leaderId = document.getElementById('bulkLeaderSelect').value;
     const selected = [...document.querySelectorAll('.member-checkbox:checked')].map(cb => cb.value);
@@ -199,7 +143,6 @@ document.getElementById('bulkAssignBtn')?.addEventListener('click', () => {
     assignMembers(leaderId, selected);
 });
 
-// ✅ Single row assignment
 document.querySelectorAll('.singleAssignBtn').forEach(btn => {
     btn.addEventListener('click', () => {
         const leaderId = btn.previousElementSibling.value;
