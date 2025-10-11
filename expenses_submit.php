@@ -55,5 +55,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_expense'])) {
     </div>
 </div>
 <script src="expenses.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Collapsible submenus
+    document.querySelectorAll('.collapse-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const submenu = btn.nextElementSibling;
+            submenu.classList.toggle('open');
+        });
+    });
+
+    // Sidebar collapse button
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('toggleSidebar');
+    toggleBtn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+    });
+});
+</script>
 </body>
 </html>

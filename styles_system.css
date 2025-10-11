@@ -1511,3 +1511,124 @@ canvas#donationsChart {
     border: 2px solid #ffc107;
     background: #fffdf5;
 }
+
+/* --- COLLAPSIBLE SIDEBAR --- */
+.sidebar {
+    width: 260px;
+    background-color: #fff;
+    color: #333;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+}
+
+.sidebar-content {
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.sidebar-content::-webkit-scrollbar {
+    display: none;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background-color: #0271c0;
+    color: white;
+}
+.collapse-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.nav-menu li {
+    padding: 8px 15px;
+}
+
+.nav-menu a {
+    color: #333;
+    text-decoration: none;
+    display: block;
+    border-radius: 6px;
+    transition: background 0.3s;
+}
+.nav-menu a.active, .nav-menu a:hover {
+    background: #0271c0;
+    color: white;
+}
+
+.collapsible {
+    margin-bottom: 4px;
+}
+.collapse-toggle {
+    background: none;
+    border: none;
+    color: #0271c0;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    padding: 10px 15px;
+    transition: 0.3s;
+}
+.collapse-toggle:hover {
+    background: rgba(2, 113, 192, 0.1);
+}
+.submenu {
+    display: none;
+    padding-left: 15px;
+}
+.submenu.open {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Collapsed View of NAVBAR --- */
+.sidebar.collapsed {
+    width: 70px;
+}
+.sidebar.collapsed .logo {
+    display: none;
+}
+.sidebar.collapsed .collapse-toggle {
+    text-align: center;
+    font-size: 18px;
+}
+.sidebar.collapsed .submenu {
+    display: none !important;
+}
+.sidebar.collapsed a span {
+    margin-right: 0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        z-index: 1000;
+        left: -260px;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    .collapse-btn {
+        font-size: 24px;
+    }
+}
