@@ -1,12 +1,12 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN]); // Only Admin can promote users
+restrict_to_roles([ROLE_ADMIN]);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $user_id = intval($_POST["user_id"]);
 
-    // 🔹 Fetch user info
+    // Fetch user info
     $stmt = $mysqli->prepare("SELECT firstname, lastname, email, contact, user_code, role_id FROM users WHERE id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -25,17 +25,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $old_code = $user["user_code"];
     $old_role = $user["role_id"];
 
-    // ✅ Step 1: Update Role to Leader
-    $leader_role_id = ROLE_LEADER;
-    $update_role = $mysqli->prepare("UPDATE users SET role_id = ? WHERE id = ?");
-    $update_role->bind_param("ii", $leader_role_id, $user_id);
+    // ✅ 1. Update role to LEADER
+    $update_role = $mysqli->prepare("UPDATE users SET role_id = 2 WHERE id = ?");
+    $update_role->bind_param("i", $user_id);
     $update_role->execute();
     $update_role->close();
 
-    // ✅ Step 2: Update User Code (M→L or create new prefix)
-    if (preg_match('/^M/', $old_code)) {
-        $new_code = preg_replace('/^M/', 'L', $old_code);
-    } else {
+    // ✅ 2. Update user_code prefix
+    $new_code = preg_replace('/^M/', 'L', $old_code);
+    if ($new_code === $old_code) {
         $new_code = 'L' . substr($old_code, 1);
     }
 
@@ -44,55 +42,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $update_code->execute();
     $update_code->close();
 
-    // ✅ Step 3: Add to Leaders Table if not already there
+    // ✅ 3. Add to leaders table (avoid duplicates)
     $check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ?");
     $check_leader->bind_param("s", $email);
     $check_leader->execute();
-    $leader_result = $check_leader->get_result();
-    $leader = $leader_result->fetch_assoc();
+    $leader_exists = $check_leader->get_result()->fetch_assoc();
     $check_leader->close();
 
-    if (!$leader) {
+    if (!$leader_exists) {
         $insertLeader = $mysqli->prepare("
-            INSERT INTO leaders (leader_name, contact, email, created_at)
-            VALUES (?, ?, ?, NOW())
+            INSERT INTO leaders (leader_name, contact, email, status, created_at)
+            VALUES (?, ?, ?, 'active', NOW())
         ");
         $insertLeader->bind_param("sss", $fullname, $contact, $email);
         $insertLeader->execute();
-        $leader_id = $insertLeader->insert_id; // Capture new leader_id
+        $leader_id = $insertLeader->insert_id;
         $insertLeader->close();
     } else {
-        $leader_id = $leader["leader_id"];
-        // Update leader info if changed
-        $updateLeader = $mysqli->prepare("
-            UPDATE leaders 
-            SET leader_name = ?, contact = ?, email = ?
-            WHERE leader_id = ?
-        ");
-        $updateLeader->bind_param("sssi", $fullname, $contact, $email, $leader_id);
-        $updateLeader->execute();
-        $updateLeader->close();
+        $leader_id = $leader_exists['leader_id'];
+        $mysqli->query("UPDATE leaders SET status = 'active', deactivated_at = NULL WHERE leader_id = $leader_id");
     }
 
-    // ✅ Step 4: Automatically create a Cell Group for this leader (if not exists)
-    $check_group = $mysqli->prepare("SELECT id FROM cell_groups WHERE leader_id = ?");
+    // ✅ 4. Auto-create cell group if none exists
+    $check_group = $mysqli->prepare("SELECT id FROM cell_groups WHERE leader_id = ? AND status = 'active'");
     $check_group->bind_param("i", $leader_id);
     $check_group->execute();
-    $group_exists = $check_group->get_result()->num_rows > 0;
+    $group_exists = $check_group->get_result()->fetch_assoc();
     $check_group->close();
 
     if (!$group_exists) {
         $group_name = $fullname . "'s Cell Group";
-        $create_group = $mysqli->prepare("
-            INSERT INTO cell_groups (group_name, leader_id, created_at)
-            VALUES (?, ?, NOW())
+        $insert_group = $mysqli->prepare("
+            INSERT INTO cell_groups (group_name, leader_id, status)
+            VALUES (?, ?, 'active')
         ");
-        $create_group->bind_param("si", $group_name, $leader_id);
-        $create_group->execute();
-        $create_group->close();
+        $insert_group->bind_param("si", $group_name, $leader_id);
+        $insert_group->execute();
+        $insert_group->close();
     }
 
-    // ✅ Step 5: Log the Role Change
+    // ✅ 5. Log role change
     $admin_id = $_SESSION["user_id"];
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
@@ -102,8 +91,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    // ✅ Step 6: Redirect
-    header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader and assigned a new Cell Group!");
+    // ✅ 6. Redirect
+    header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader successfully and assigned a new Cell Group!");
     exit();
 }
 

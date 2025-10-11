@@ -81,6 +81,7 @@
         <li class="nav-section">🧩 System</li>
         <li><a href="logs.php" class="<?= basename($_SERVER['PHP_SELF']) == 'logs.php' ? 'active' : '' ?>"><span>🗂️</span> Activity Logs</a></li>
         <li><a href="admin_dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'admin_dashboard.php' ? 'active' : '' ?>"><span>⚙️</span> Manage Users</a></li>
+        <li><a href="leaders_management.php" class="<?= basename($_SERVER['PHP_SELF']) == 'leaders_management.php' ? 'active' : '' ?>"><span>👑</span> Leaders Management</a></li>
         <li><a href="unassigned_members.php" class="<?= basename($_SERVER['PHP_SELF']) == 'unassigned_members.php' ? 'active' : '' ?>"><span>📜</span> Unassigned Members</a></li>
         <?php endif; ?>
 
