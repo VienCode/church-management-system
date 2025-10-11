@@ -21,44 +21,61 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
 
     $fullname = trim($user["firstname"] . ' ' . $user["lastname"]);
     $email = trim($user["email"]);
+    $old_code = $user["user_code"];
 
-    // 🔹 Validate if user is currently a leader
+    // 🔸 Ensure this user is a Leader
     if ($user["role_id"] != ROLE_LEADER) {
-        header("Location: admin_dashboard.php?msg=⚠️ $fullname is not a leader.");
+        header("Location: admin_dashboard.php?msg=⚠️ $fullname is not currently a leader.");
         exit();
     }
 
-    // ✅ Step 1: Demote to member (role_id = 3)
+    // ✅ Step 1: Retrieve corresponding leader record
+    $leader_stmt = $mysqli->prepare("SELECT leader_id FROM leaders WHERE LOWER(email) = LOWER(?)");
+    $leader_stmt->bind_param("s", $email);
+    $leader_stmt->execute();
+    $leader_result = $leader_stmt->get_result();
+    $leader = $leader_result->fetch_assoc();
+    $leader_stmt->close();
+
+    // If leader record doesn't exist, still proceed safely
+    $leader_id = $leader['leader_id'] ?? null;
+
+    // ✅ Step 2: Demote to Member (role_id = 3) and update user_code prefix (L → M)
     $stmt = $mysqli->prepare("
         UPDATE users 
         SET role_id = 3, 
-            user_code = CONCAT('M', SUBSTRING(user_code, 2))
+            user_code = CONCAT('M', SUBSTRING(user_code, 2)),
+            leader_id = NULL
         WHERE id = ?
     ");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stmt->close();
 
-    // ✅ Step 2: Unassign all members under this leader (if any)
-    $unassign = $mysqli->prepare("
-        UPDATE users 
-        SET leader_id = NULL 
-        WHERE leader_id IN (
-            SELECT leader_id FROM leaders WHERE LOWER(email) = LOWER(?)
-        )
-    ");
-    $unassign->bind_param("s", $email);
-    $unassign->execute();
-    $unassign->close();
+    // ✅ Step 3: Unassign members under this leader (if any)
+    if ($leader_id) {
+        $unassign = $mysqli->prepare("UPDATE users SET leader_id = NULL WHERE leader_id = ?");
+        $unassign->bind_param("i", $leader_id);
+        $unassign->execute();
+        $unassign->close();
+    }
 
-    // ✅ Step 3: Delete from leaders table using email
-    $delete = $mysqli->prepare("DELETE FROM leaders WHERE LOWER(email) = LOWER(?)");
-    $delete->bind_param("s", $email);
-    $delete->execute();
-    $deleted_rows = $delete->affected_rows;
-    $delete->close();
+    // ✅ Step 4: Delete cell group and leader record (cascade)
+    if ($leader_id) {
+        // Delete the leader’s cell group first
+        $delete_group = $mysqli->prepare("DELETE FROM cell_groups WHERE leader_id = ?");
+        $delete_group->bind_param("i", $leader_id);
+        $delete_group->execute();
+        $delete_group->close();
 
-    // ✅ Step 4: Log the role change
+        // Delete the leader record itself
+        $delete_leader = $mysqli->prepare("DELETE FROM leaders WHERE leader_id = ?");
+        $delete_leader->bind_param("i", $leader_id);
+        $delete_leader->execute();
+        $delete_leader->close();
+    }
+
+    // ✅ Step 5: Log the role change
     $admin_id = $_SESSION['user_id'];
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
@@ -68,12 +85,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    // ✅ Step 5: Redirect with result
-    if ($deleted_rows > 0) {
-        header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted and removed from Leaders table.");
-    } else {
-        header("Location: admin_dashboard.php?msg=⚠️ $fullname demoted to Member, but no matching record found in Leaders table.");
-    }
+    // ✅ Step 6: Success redirect
+    header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted to Member, removed from Leaders and their Cell Group deleted.");
     exit();
 }
 

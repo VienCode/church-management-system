@@ -25,14 +25,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $old_code = $user["user_code"];
     $old_role = $user["role_id"];
 
-    // ✅ Step 1: Update Role to Leader (role_id = 2)
+    // ✅ Step 1: Update Role to Leader
     $leader_role_id = ROLE_LEADER;
     $update_role = $mysqli->prepare("UPDATE users SET role_id = ? WHERE id = ?");
     $update_role->bind_param("ii", $leader_role_id, $user_id);
     $update_role->execute();
     $update_role->close();
 
-    // ✅ Step 2: Update User Code (Change prefix from M→L or generate new one)
+    // ✅ Step 2: Update User Code (M→L or create new prefix)
     if (preg_match('/^M/', $old_code)) {
         $new_code = preg_replace('/^M/', 'L', $old_code);
     } else {
@@ -44,34 +44,55 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $update_code->execute();
     $update_code->close();
 
-    // ✅ Step 3: Add to Leaders Table (if not exists)
+    // ✅ Step 3: Add to Leaders Table if not already there
     $check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ?");
     $check_leader->bind_param("s", $email);
     $check_leader->execute();
-    $check_result = $check_leader->get_result();
+    $leader_result = $check_leader->get_result();
+    $leader = $leader_result->fetch_assoc();
+    $check_leader->close();
 
-    if ($check_result->num_rows === 0) {
+    if (!$leader) {
         $insertLeader = $mysqli->prepare("
             INSERT INTO leaders (leader_name, contact, email, created_at)
             VALUES (?, ?, ?, NOW())
         ");
         $insertLeader->bind_param("sss", $fullname, $contact, $email);
         $insertLeader->execute();
+        $leader_id = $insertLeader->insert_id; // Capture new leader_id
         $insertLeader->close();
     } else {
-        // Optional: Update leader info if it exists but changed
+        $leader_id = $leader["leader_id"];
+        // Update leader info if changed
         $updateLeader = $mysqli->prepare("
             UPDATE leaders 
             SET leader_name = ?, contact = ?, email = ?
-            WHERE email = ?
+            WHERE leader_id = ?
         ");
-        $updateLeader->bind_param("ssss", $fullname, $contact, $email, $email);
+        $updateLeader->bind_param("sssi", $fullname, $contact, $email, $leader_id);
         $updateLeader->execute();
         $updateLeader->close();
     }
-    $check_leader->close();
 
-    // ✅ Step 4: Log Role Change (optional, for audit)
+    // ✅ Step 4: Automatically create a Cell Group for this leader (if not exists)
+    $check_group = $mysqli->prepare("SELECT id FROM cell_groups WHERE leader_id = ?");
+    $check_group->bind_param("i", $leader_id);
+    $check_group->execute();
+    $group_exists = $check_group->get_result()->num_rows > 0;
+    $check_group->close();
+
+    if (!$group_exists) {
+        $group_name = $fullname . "'s Cell Group";
+        $create_group = $mysqli->prepare("
+            INSERT INTO cell_groups (group_name, leader_id, created_at)
+            VALUES (?, ?, NOW())
+        ");
+        $create_group->bind_param("si", $group_name, $leader_id);
+        $create_group->execute();
+        $create_group->close();
+    }
+
+    // ✅ Step 5: Log the Role Change
     $admin_id = $_SESSION["user_id"];
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
@@ -81,8 +102,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    // ✅ Step 5: Redirect with success message
-    header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader successfully!");
+    // ✅ Step 6: Redirect
+    header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader and assigned a new Cell Group!");
     exit();
 }
 

@@ -48,7 +48,7 @@
         <?php endif; ?>
 
         <!-- ANNOUNCEMENTS -->
-        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR, ROLE_LEADER])): ?>
+        <?php if (can_access([ROLE_ADMIN, ROLE_EDITOR, ROLE_PASTOR])): ?>
         <li class="nav-divider"></li>
         <li class="nav-section">Announcements</li>
         <li><a href="upload.php" class="<?= basename($_SERVER['PHP_SELF']) == 'upload.php' ? 'active' : '' ?>"><span>📢</span> Post Announcement</a></li>
