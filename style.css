@@ -30,7 +30,6 @@ html, body {
 }
 
 .login_body, .register_body {
-    background-image: url(images/jireh.jpg);
     background-size: cover; 
     background-position: center;
     background-repeat: no-repeat;
