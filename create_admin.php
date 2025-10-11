@@ -5,7 +5,7 @@ include 'database.php';
 // You can edit these values safely
 $firstname = "System";
 $lastname = "Administrator";
-$email = "admin@ucf.com";
+$email = "administrator@ucf.com";
 $contact = "09123456789";
 $age = 35;
 $user_address = "Church HQ, Unity City";
