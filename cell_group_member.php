@@ -1,7 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_ADMIN]);
+restrict_to_roles([ROLE_MEMBER]);
 
 $sql = "
     SELECT 

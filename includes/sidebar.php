@@ -34,6 +34,7 @@
 
         <?php if (can_access([ROLE_LEADER])): ?>
             <li><a href="cell_group_leader.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_leader.php' ? 'active' : '' ?>"><span>📅</span> My Cell Group (Leader)</a></li>
+            <li><a href="cell_group_attendance.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_attendance.php' ? 'active' : '' ?>"><span>📝</span> Mark Attendance</a></li>
         <?php endif; ?>
 
         <?php if (can_access([ROLE_MEMBER])): ?>
