@@ -68,12 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
 
 // ✅ Fetch members under this leader
 $members_stmt = $mysqli->prepare("
-    SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
+    SELECT u.id AS member_id, u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, COALESCE(a.status, 'Not Marked') AS attendance_status
     FROM cell_group_members m
-    JOIN users u ON m.member_id = u.id
+    JOIN users u ON m.user_code = u.user_code
+    LEFT JOIN cell_group_attendance a ON a.member_id = u.id AND a.meeting_id = ?
     WHERE m.cell_group_id = ?
     ORDER BY u.lastname ASC
 ");
+
 $members_stmt->bind_param("i", $group_id);
 $members_stmt->execute();
 $members = $members_stmt->get_result();

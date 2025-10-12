@@ -5,7 +5,6 @@ restrict_to_roles([ROLE_ADMIN]);
 
 header('Content-Type: application/json');
 
-// ✅ Validate request data
 if (!isset($_POST['leader_id'], $_POST['member_ids'])) {
     echo json_encode(['success' => false, 'message' => 'Invalid request.']);
     exit;
@@ -19,27 +18,15 @@ if (empty($leader_id) || empty($member_ids)) {
     exit;
 }
 
-// ✅ Step 1: Check if leader has an active cell group
-$group_stmt = $mysqli->prepare("
-    SELECT id 
-    FROM cell_groups 
-    WHERE leader_id = ? AND status = 'active' 
-    LIMIT 1
-");
+// ✅ Step 1: Find or create the leader’s active cell group
+$group_stmt = $mysqli->prepare("SELECT id FROM cell_groups WHERE leader_id = ? AND status = 'active' LIMIT 1");
 $group_stmt->bind_param("i", $leader_id);
 $group_stmt->execute();
-$group_result = $group_stmt->get_result();
-$group = $group_result->fetch_assoc();
+$group = $group_stmt->get_result()->fetch_assoc();
 $group_stmt->close();
 
-// ✅ Step 2: Auto-create a cell group if none exists
 if (!$group) {
-    $leader_data = $mysqli->prepare("
-        SELECT leader_name 
-        FROM leaders 
-        WHERE leader_id = ? 
-        LIMIT 1
-    ");
+    $leader_data = $mysqli->prepare("SELECT leader_name FROM leaders WHERE leader_id = ? LIMIT 1");
     $leader_data->bind_param("i", $leader_id);
     $leader_data->execute();
     $leader_info = $leader_data->get_result()->fetch_assoc();
@@ -59,45 +46,49 @@ if (!$group) {
     $group_id = $group['id'];
 }
 
-// ✅ Step 3: Assign members and insert them into cell_group_members
+// ✅ Step 2: Assign members by user_code
 $updated = 0;
-foreach ($member_ids as $member_id) {
-    // Skip invalid IDs
-    if (!is_numeric($member_id)) continue;
+foreach ($member_ids as $id) {
+    if (!is_numeric($id)) continue;
 
-    // Update leader_id in users table
+    // Get user_code
+    $code_stmt = $mysqli->prepare("SELECT user_code FROM users WHERE id = ?");
+    $code_stmt->bind_param("i", $id);
+    $code_stmt->execute();
+    $code_result = $code_stmt->get_result()->fetch_assoc();
+    $code_stmt->close();
+
+    if (!$code_result) continue;
+    $user_code = $code_result['user_code'];
+
+    // Update leader assignment
     $update_user = $mysqli->prepare("UPDATE users SET leader_id = ?, last_unassigned_at = NULL WHERE id = ?");
-    $update_user->bind_param("ii", $leader_id, $member_id);
+    $update_user->bind_param("ii", $leader_id, $id);
     $update_user->execute();
     $update_user->close();
 
-    // Check if member is already linked to this cell group
-    $check_stmt = $mysqli->prepare("
-        SELECT id 
-        FROM cell_group_members 
-        WHERE cell_group_id = ? AND member_id = ?
-    ");
-    $check_stmt->bind_param("ii", $group_id, $member_id);
-    $check_stmt->execute();
-    $exists = $check_stmt->get_result()->num_rows > 0;
-    $check_stmt->close();
+    // Check if already in group
+    $check = $mysqli->prepare("SELECT id FROM cell_group_members WHERE cell_group_id = ? AND user_code = ?");
+    $check->bind_param("is", $group_id, $user_code);
+    $check->execute();
+    $exists = $check->get_result()->num_rows > 0;
+    $check->close();
 
     if (!$exists) {
-        $insert_stmt = $mysqli->prepare("
-            INSERT INTO cell_group_members (cell_group_id, member_id)
+        $insert = $mysqli->prepare("
+            INSERT INTO cell_group_members (cell_group_id, user_code)
             VALUES (?, ?)
         ");
-        $insert_stmt->bind_param("ii", $group_id, $member_id);
-        $insert_stmt->execute();
-        $insert_stmt->close();
+        $insert->bind_param("is", $group_id, $user_code);
+        $insert->execute();
+        $insert->close();
         $updated++;
     }
 }
 
-// ✅ Step 4: Return success response
 echo json_encode([
     'success' => true,
-    'message' => "✅ Successfully reassigned $updated member(s) and added them to the leader’s cell group."
+    'message' => "✅ Successfully reassigned $updated member(s) to the leader’s group."
 ]);
 exit;
 ?>

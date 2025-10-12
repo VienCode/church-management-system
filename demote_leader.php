@@ -20,52 +20,53 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
 
     $fullname = trim($user["firstname"] . ' ' . $user["lastname"]);
     $email = trim($user["email"]);
-    $old_code = $user["user_code"];
 
+    // Ensure user is a leader
     if ($user["role_id"] != ROLE_LEADER) {
         header("Location: admin_dashboard.php?msg=⚠️ $fullname is not currently a leader.");
         exit();
     }
 
-    // Find leader_id
-    $leader_stmt = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? AND status = 'active'");
+    // Find leader record
+    $leader_stmt = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? AND status = 'active' LIMIT 1");
     $leader_stmt->bind_param("s", $email);
     $leader_stmt->execute();
     $leader = $leader_stmt->get_result()->fetch_assoc();
     $leader_stmt->close();
+
     $leader_id = $leader['leader_id'] ?? null;
 
-    // ✅ Change L → M code safely
-    $new_code = preg_replace('/^L/', 'M', $old_code);
-    if ($new_code === $old_code) {
-        $new_code = 'M' . substr($old_code, 1);
-    }
-
-    // ✅ Demote and preserve membership status
-    $update = $mysqli->prepare("
-        UPDATE users 
-        SET role_id = 3,
-            user_code = ?,
-            leader_id = NULL,
-            is_cell_member = 1
-        WHERE id = ?
-    ");
-    $update->bind_param("si", $new_code, $user_id);
-    $update->execute();
-    $update->close();
-
-    // ✅ Unassign and deactivate
+    // ✅ Step 1: Temporarily clear relationships BEFORE role update
     if ($leader_id) {
+        // Unassign all members from this leader first (avoids trigger conflict)
         $unassign = $mysqli->prepare("UPDATE users SET leader_id = NULL WHERE leader_id = ?");
         $unassign->bind_param("i", $leader_id);
         $unassign->execute();
         $unassign->close();
+    }
 
+    // ✅ Step 2: Now safely demote the user
+    $new_code = preg_replace('/^L/', 'M', $user["user_code"]);
+    if ($new_code === $user["user_code"]) {
+        $new_code = 'M' . substr($user["user_code"], 1);
+    }
+
+    $update_user = $mysqli->prepare("
+        UPDATE users 
+        SET role_id = 3, user_code = ?, leader_id = NULL 
+        WHERE id = ?
+    ");
+    $update_user->bind_param("si", $new_code, $user_id);
+    $update_user->execute();
+    $update_user->close();
+
+    // ✅ Step 3: Deactivate leader & cell group
+    if ($leader_id) {
         $mysqli->query("UPDATE leaders SET status = 'inactive', deactivated_at = NOW() WHERE leader_id = $leader_id");
         $mysqli->query("UPDATE cell_groups SET status = 'inactive', archived_at = NOW() WHERE leader_id = $leader_id");
     }
 
-    // ✅ Log the action
+    // ✅ Step 4: Log demotion
     $admin_id = $_SESSION['user_id'];
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
@@ -75,7 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted successfully. Their group and leadership have been deactivated.");
+    header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted successfully. Their cell group is now inactive and members unassigned.");
     exit();
 }
 

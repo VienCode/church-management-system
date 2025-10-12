@@ -70,10 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
 $members_stmt = $mysqli->prepare("
     SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
     FROM cell_group_members m
-    JOIN users u ON m.member_id = u.id
+    JOIN users u ON m.user_code = u.user_code
     WHERE m.cell_group_id = ?
     ORDER BY u.lastname ASC
 ");
+
 $members_stmt->bind_param("i", $group_id);
 $members_stmt->execute();
 $members = $members_stmt->get_result();
