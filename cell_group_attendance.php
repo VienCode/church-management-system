@@ -3,18 +3,16 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_LEADER, ROLE_ADMIN]);
 
-$user_id = $_SESSION['user_id'] ?? null;
 $user_email = $_SESSION['email'] ?? null;
 $fullname = trim(($_SESSION['firstname'] ?? '') . ' ' . ($_SESSION['lastname'] ?? ''));
 
-// ✅ Ensure the leader is registered
+// ✅ Ensure leader exists or auto-register
 $check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? LIMIT 1");
 $check_leader->bind_param("s", $user_email);
 $check_leader->execute();
 $leader_data = $check_leader->get_result()->fetch_assoc();
 $check_leader->close();
 
-// ✅ Auto-register if missing
 if (!$leader_data && !empty($user_email)) {
     $insert = $mysqli->prepare("
         INSERT INTO leaders (leader_name, email, contact, status, created_at)
@@ -23,13 +21,13 @@ if (!$leader_data && !empty($user_email)) {
     $insert->bind_param("sss", $fullname, $user_email, $user_email);
     $insert->execute();
     $insert->close();
-    header("Location: cell_group_leader.php");
+    header("Location: cell_group_attendance.php");
     exit;
 }
 
-$leader_id = $leader_data['leader_id'] ?? null;
+$leader_id = $leader_data['leader_id'];
 
-// ✅ Get the leader’s active cell group
+// ✅ Get active cell group
 $group_stmt = $mysqli->prepare("
     SELECT id, group_name
     FROM cell_groups
@@ -49,34 +47,37 @@ if (!$group) {
 $group_id = $group['id'];
 $group_name = $group['group_name'];
 
-// ✅ Handle meeting creation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $meeting_date = $_POST['meeting_date'];
+// ✅ Get selected meeting
+$meeting_id = $_GET['meeting_id'] ?? null;
 
-    $stmt = $mysqli->prepare("
-        INSERT INTO cell_group_meetings (cell_group_id, title, description, meeting_date, created_at)
-        VALUES (?, ?, ?, ?, NOW())
-    ");
-    $stmt->bind_param("isss", $group_id, $title, $description, $meeting_date);
-    $stmt->execute();
-    $stmt->close();
-
-    $success = "✅ Meeting added successfully!";
+// ✅ Save attendance when submitted
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
+    foreach ($_POST['attendance'] as $user_code => $status) {
+        $stmt = $mysqli->prepare("
+            INSERT INTO cell_group_attendance (meeting_id, user_code, status)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE status = VALUES(status)
+        ");
+        $stmt->bind_param("iss", $meeting_id, $user_code, $status);
+        $stmt->execute();
+        $stmt->close();
+    }
+    $success = "✅ Attendance updated successfully for this meeting.";
 }
 
-// ✅ Fetch members under this leader
+// ✅ Fetch members under this group
 $members_stmt = $mysqli->prepare("
-    SELECT u.id AS member_id, u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, COALESCE(a.status, 'Not Marked') AS attendance_status
+    SELECT 
+        u.user_code,
+        CONCAT(u.firstname, ' ', u.lastname) AS fullname,
+        COALESCE(a.status, 'Not Marked') AS attendance_status
     FROM cell_group_members m
     JOIN users u ON m.user_code = u.user_code
-    LEFT JOIN cell_group_attendance a ON a.member_id = u.id AND a.meeting_id = ?
+    LEFT JOIN cell_group_attendance a ON a.user_code = u.user_code AND a.meeting_id = ?
     WHERE m.cell_group_id = ?
     ORDER BY u.lastname ASC
 ");
-
-$members_stmt->bind_param("i", $group_id);
+$members_stmt->bind_param("ii", $meeting_id, $group_id);
 $members_stmt->execute();
 $members = $members_stmt->get_result();
 
@@ -96,94 +97,109 @@ $meetings = $meetings_stmt->get_result();
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>📅 My Cell Group (Leader) | UCF</title>
+<title>📝 Cell Group Attendance | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.cell-container { background:#fff; padding:25px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); max-width:1100px; margin:30px auto; }
+.cell-container {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 1100px;
+    margin: 30px auto;
+}
 .section-title { color:#0271c0; border-bottom:2px solid #0271c0; padding-bottom:5px; margin-bottom:15px; }
-table { width:100%; border-collapse:collapse; margin-top:15px; }
-th, td { padding:10px; border-bottom:1px solid #e6e6e6; text-align:center; }
-th { background:#0271c0; color:white; }
 .save-btn { background:#0271c0; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
 .save-btn:hover { background:#02589b; }
-.success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:600; }
+.status-btn { padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; border:none; }
+.present { background:#28a745; color:white; }
+.absent { background:#dc3545; color:white; }
+.late { background:#ffc107; color:black; }
+.active { transform:scale(1.05); box-shadow:0 0 5px rgba(0,0,0,0.2); }
+.success { background:#e6ffed; color:#256029; padding:10px; border-radius:8px; margin-bottom:12px; font-weight:600; }
+.summary { margin-top:15px; display:flex; gap:10px; justify-content:center; }
+.summary div { background:#f4f7fa; padding:10px 18px; border-radius:8px; font-weight:600; }
 </style>
 </head>
 
 <body>
 <div class="main-layout">
-   <?php include __DIR__ . '/includes/sidebar.php'; ?>
+<?php include __DIR__ . '/includes/sidebar.php'; ?>
+<div class="content-area">
+<div class="cell-container">
+<h1>📝 Cell Group Attendance</h1>
+<p><strong><?= htmlspecialchars($group_name) ?></strong></p>
 
-   <div class="content-area">
-      <div class="cell-container">
-         <h1>📅 My Cell Group</h1>
-         <p>Welcome, <strong><?= htmlspecialchars($fullname) ?></strong>! You’re managing <strong><?= htmlspecialchars($group_name) ?></strong>.</p>
+<?php if (!empty($success)): ?>
+<div class="success"><?= $success ?></div>
+<?php endif; ?>
 
-         <?php if (!empty($success)): ?>
-            <div class="success"><?= $success ?></div>
-         <?php endif; ?>
+<!-- Select Meeting -->
+<section>
+<h2 class="section-title">📅 Select Meeting</h2>
+<form method="GET">
+<select name="meeting_id" required>
+<option value="">Select Meeting</option>
+<?php while ($m = $meetings->fetch_assoc()): ?>
+<option value="<?= $m['id'] ?>" <?= $meeting_id == $m['id'] ? 'selected' : '' ?>>
+<?= htmlspecialchars($m['title'] . ' - ' . date('F j, Y', strtotime($m['meeting_date']))) ?>
+</option>
+<?php endwhile; ?>
+</select>
+<button type="submit" class="save-btn">View Attendance</button>
+</form>
+</section>
 
-         <!-- Add Meeting -->
-         <section>
-            <h2 class="section-title">➕ Add New Meeting</h2>
-            <form method="POST">
-               <label>Meeting Title:</label><br>
-               <input type="text" name="title" required style="width:100%; padding:8px; margin-bottom:10px;"><br>
-               <label>Description:</label><br>
-               <textarea name="description" rows="3" style="width:100%; padding:8px; margin-bottom:10px;"></textarea><br>
-               <label>Date:</label><br>
-               <input type="date" name="meeting_date" required style="padding:8px; margin-bottom:10px;"><br>
-               <button type="submit" name="add_meeting" class="save-btn">💾 Save Meeting</button>
-            </form>
-         </section>
+<!-- Attendance Table -->
+<?php if ($meeting_id): ?>
+<section style="margin-top:30px;">
+<h2 class="section-title">👥 Mark Attendance</h2>
+<form method="POST">
+<input type="hidden" name="meeting_id" value="<?= $meeting_id ?>">
+<table>
+<thead><tr><th>Code</th><th>Name</th><th>Status</th></tr></thead>
+<tbody>
+<?php
+$present = $absent = $late = 0;
+while ($m = $members->fetch_assoc()):
+    if ($m['attendance_status'] === 'Present') $present++;
+    elseif ($m['attendance_status'] === 'Absent') $absent++;
+    elseif ($m['attendance_status'] === 'Late') $late++;
+?>
+<tr>
+<td><?= htmlspecialchars($m['user_code']) ?></td>
+<td><?= htmlspecialchars($m['fullname']) ?></td>
+<td>
+    <input type="hidden" name="attendance[<?= htmlspecialchars($m['user_code']) ?>]" value="<?= htmlspecialchars($m['attendance_status']) ?>">
+    <button type="button" class="status-btn present <?= $m['attendance_status']=='Present'?'active':'' ?>" onclick="setStatus(this,'Present')">Present</button>
+    <button type="button" class="status-btn absent <?= $m['attendance_status']=='Absent'?'active':'' ?>" onclick="setStatus(this,'Absent')">Absent</button>
+    <button type="button" class="status-btn late <?= $m['attendance_status']=='Late'?'active':'' ?>" onclick="setStatus(this,'Late')">Late</button>
+</td>
+</tr>
+<?php endwhile; ?>
+</tbody>
+</table>
+<center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
 
-         <!-- Meeting List -->
-         <section style="margin-top:30px;">
-            <h2 class="section-title">📅 Meetings</h2>
-            <?php if ($meetings->num_rows === 0): ?>
-               <p>No meetings scheduled yet.</p>
-            <?php else: ?>
-               <table>
-                  <thead>
-                     <tr><th>Date</th><th>Title</th><th>Description</th><th>Mark Attendance</th></tr>
-                  </thead>
-                  <tbody>
-                     <?php while ($meeting = $meetings->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars(date('F j, Y', strtotime($meeting['meeting_date']))) ?></td>
-                           <td><?= htmlspecialchars($meeting['title']) ?></td>
-                           <td><?= htmlspecialchars($meeting['description']) ?></td>
-                           <td><a href="cell_group_attendance.php?meeting_id=<?= $meeting['id'] ?>" class="save-btn">📝 Mark Attendance</a></td>
-                        </tr>
-                     <?php endwhile; ?>
-                  </tbody>
-               </table>
-            <?php endif; ?>
-         </section>
-
-         <!-- Members List -->
-         <section style="margin-top:30px;">
-            <h2 class="section-title">👥 Members</h2>
-            <?php if ($members->num_rows === 0): ?>
-               <p>No members assigned to your group yet.</p>
-            <?php else: ?>
-               <table>
-                  <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
-                  <tbody>
-                     <?php while ($m = $members->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars($m['user_code']) ?></td>
-                           <td><?= htmlspecialchars($m['fullname']) ?></td>
-                           <td><?= htmlspecialchars($m['email']) ?></td>
-                           <td><?= htmlspecialchars($m['contact']) ?></td>
-                        </tr>
-                     <?php endwhile; ?>
-                  </tbody>
-               </table>
-            <?php endif; ?>
-         </section>
-      </div>
-   </div>
+<!-- Summary -->
+<div class="summary">
+<div>✅ Present: <?= $present ?></div>
+<div>❌ Absent: <?= $absent ?></div>
+<div>⏰ Late: <?= $late ?></div>
 </div>
+</form>
+</section>
+<?php endif; ?>
+</div></div></div>
+
+<script>
+function setStatus(btn, value) {
+    const row = btn.closest('tr');
+    const hidden = row.querySelector('input[type=hidden]');
+    hidden.value = value;
+    row.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+</script>
 </body>
 </html>
