@@ -115,7 +115,7 @@ if ($is_existing_member) {
     $stmt->close();
 
     $_SESSION['register_success'] = "🎉 Registered successfully as a new attendee!";
-    header("Location: login.php");
+    header("Location: register_success.php");
     exit;
 }
 ?>
