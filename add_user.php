@@ -108,6 +108,72 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("Location: add_user_form.php");
         exit;
     }
+
+    if ($stmt->execute()) {
+    $new_user_id = $stmt->insert_id;
+
+    // ✅ Auto-link to cell group if user is assigned to a leader
+    if (!empty($leader_id)) {
+        // Find or create leader’s active cell group
+        $group_stmt = $mysqli->prepare("
+            SELECT id FROM cell_groups WHERE leader_id = ? AND status = 'active' LIMIT 1
+        ");
+        $group_stmt->bind_param("i", $leader_id);
+        $group_stmt->execute();
+        $group_result = $group_stmt->get_result()->fetch_assoc();
+        $group_stmt->close();
+
+        if (!$group_result) {
+            // Create cell group if not found
+            $leader_name_res = $mysqli->prepare("SELECT leader_name FROM leaders WHERE leader_id = ?");
+            $leader_name_res->bind_param("i", $leader_id);
+            $leader_name_res->execute();
+            $leader_data = $leader_name_res->get_result()->fetch_assoc();
+            $leader_name_res->close();
+
+            $group_name = $leader_data ? $leader_data['leader_name'] . "'s Cell Group" : "Unnamed Group";
+
+            $create_group = $mysqli->prepare("
+                INSERT INTO cell_groups (group_name, leader_id, status, created_at)
+                VALUES (?, ?, 'active', NOW())
+            ");
+            $create_group->bind_param("si", $group_name, $leader_id);
+            $create_group->execute();
+            $group_id = $create_group->insert_id;
+            $create_group->close();
+        } else {
+            $group_id = $group_result['id'];
+        }
+
+        // Get new user's code
+        $code_stmt = $mysqli->prepare("SELECT user_code FROM users WHERE id = ?");
+        $code_stmt->bind_param("i", $new_user_id);
+        $code_stmt->execute();
+        $code_data = $code_stmt->get_result()->fetch_assoc();
+        $code_stmt->close();
+
+        if ($code_data) {
+            $user_code = $code_data['user_code'];
+
+            // Add member to cell_group_members table
+            $add_member = $mysqli->prepare("
+                INSERT IGNORE INTO cell_group_members (cell_group_id, user_code)
+                VALUES (?, ?)
+            ");
+            $add_member->bind_param("is", $group_id, $user_code);
+            $add_member->execute();
+            $add_member->close();
+
+            // Mark user as cell group member
+            $mysqli->query("UPDATE users SET is_cell_member = 1 WHERE id = $new_user_id");
+        }
+    }
+
+    $_SESSION['register_success'] = "✅ User successfully added and assigned to a cell group!";
+    header("Location: admin_dashboard.php");
+    exit;
+}
+
 }
 
 header("Location: add_user_form.php");
