@@ -76,6 +76,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
+    // Clear is_cell_member flag for demoted leader
+$mysqli->query("UPDATE users SET is_cell_member = 0 WHERE id = $user_id");
+
+    // Mark all members under this demoted leader as unassigned
+    $mysqli->query("
+        UPDATE users 
+        SET leader_id = NULL, last_unassigned_at = NOW()
+        WHERE leader_id = (SELECT leader_id FROM leaders WHERE email = '$email' LIMIT 1)
+    ");
+
     header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted successfully. Their cell group is now inactive and members unassigned.");
     exit();
 }

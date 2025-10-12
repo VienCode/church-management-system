@@ -98,6 +98,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
+    // Maintain is_cell_member flag for new leader
+$mysqli->query("UPDATE users SET is_cell_member = 1 WHERE id = $user_id");
+
+    // Ensure all members under this leader are also cell members
+    $mysqli->query("
+        UPDATE users 
+        SET is_cell_member = 1 
+        WHERE leader_id = (SELECT leader_id FROM leaders WHERE email = '$email' LIMIT 1)
+    ");
+
+
     // 🔹 6. Redirect
     header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader successfully and assigned to a new Cell Group!");
     exit();
