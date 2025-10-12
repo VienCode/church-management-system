@@ -13,6 +13,7 @@ SELECT
     cg.id AS group_id,
     cg.group_name,
     cg.status AS group_status,
+    l.leader_id,
     l.leader_name,
     l.email AS leader_email,
     COUNT(cgm.user_code) AS member_count
@@ -45,9 +46,6 @@ SELECT
     COUNT(*) AS total_groups
 FROM cell_groups
 ")->fetch_assoc();
-
-// --- FETCH LEADERS FOR REASSIGNING ---
-$leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders WHERE status='active' ORDER BY leader_name ASC")->fetch_all(MYSQLI_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,15 +76,14 @@ th, td { padding: 10px 12px; border-bottom: 1px solid #e6e6e6; text-align: cente
 th { background: #0271c0; color: white; }
 .action-btn {
     border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
+    text-decoration: none;
 }
-.edit { background: #ffc107; color: black; }
-.deactivate { background: #dc3545; color: white; }
-.reactivate { background: #28a745; color: white; }
 .view { background: #17a2b8; color: white; }
 .transfer { background: #007bff; color: white; }
-.summary-cards { display: flex; gap: 10px; margin-top: 15px; }
+.deactivate { background: #dc3545; color: white; }
+.reactivate { background: #28a745; color: white; }
+.summary-cards { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
 .summary-card { background: #f8f9fa; padding: 15px; border-radius: 8px; flex: 1; text-align: center; }
-.members-table { margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; }
 </style>
 </head>
 <body>
@@ -97,7 +94,7 @@ th { background: #0271c0; color: white; }
 <h1>📜 Cell Group Management</h1>
 
 <form class="search-bar" method="GET">
-    <input type="text" name="search" placeholder="🔍 Search by group or leader..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
+    <input type="text" name="search" placeholder="🔍 Search by group or leader..." value="<?= htmlspecialchars($search) ?>">
     <select name="status">
         <option value="all" <?= ($status_filter=='all')?'selected':'' ?>>All Statuses</option>
         <option value="active" <?= ($status_filter=='active')?'selected':'' ?>>Active</option>
@@ -143,9 +140,15 @@ else:
 <td>
     <a href="view_group_members.php?group_id=<?= $row['group_id'] ?>" class="action-btn view">👥 View</a>
     <?php if ($row['group_status'] === 'active'): ?>
-        <a href="deactivate_group.php?id=<?= $row['group_id'] ?>" class="action-btn deactivate" onclick="return confirm('Deactivate this group?')">🛑 Deactivate</a>
+        <form action="demote_leader.php" method="POST" style="display:inline;">
+            <input type="hidden" name="user_id" value="<?= htmlspecialchars($row['leader_id']) ?>">
+            <button type="submit" class="action-btn deactivate" onclick="return confirm('Deactivate this leader and archive their group?')">🛑 Demote</button>
+        </form>
     <?php else: ?>
-        <a href="reactivate_group.php?id=<?= $row['group_id'] ?>" class="action-btn reactivate" onclick="return confirm('Reactivate this group?')">✅ Reactivate</a>
+        <form action="reactivate_leader.php" method="POST" style="display:inline;">
+            <input type="hidden" name="leader_id" value="<?= htmlspecialchars($row['leader_id']) ?>">
+            <button type="submit" class="action-btn reactivate" onclick="return confirm('Reactivate this leader and their group?')">✅ Reactivate</button>
+        </form>
     <?php endif; ?>
     <a href="transfer_members.php?group_id=<?= $row['group_id'] ?>" class="action-btn transfer">🔄 Transfer</a>
 </td>
