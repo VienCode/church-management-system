@@ -3,18 +3,16 @@ include 'database.php';
 include 'auth_check.php';
 restrict_to_roles([ROLE_LEADER, ROLE_ADMIN]);
 
-$user_id = $_SESSION['user_id'] ?? null;
 $user_email = $_SESSION['email'] ?? null;
 $fullname = trim(($_SESSION['firstname'] ?? '') . ' ' . ($_SESSION['lastname'] ?? ''));
 
-// ✅ Ensure the leader is registered
+// ✅ Ensure leader exists or auto-register
 $check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? LIMIT 1");
 $check_leader->bind_param("s", $user_email);
 $check_leader->execute();
 $leader_data = $check_leader->get_result()->fetch_assoc();
 $check_leader->close();
 
-// ✅ Auto-register if missing
 if (!$leader_data && !empty($user_email)) {
     $insert = $mysqli->prepare("
         INSERT INTO leaders (leader_name, email, contact, status, created_at)
@@ -27,9 +25,9 @@ if (!$leader_data && !empty($user_email)) {
     exit;
 }
 
-$leader_id = $leader_data['leader_id'] ?? null;
+$leader_id = $leader_data['leader_id'];
 
-// ✅ Get the leader’s active cell group
+// ✅ Get active cell group
 $group_stmt = $mysqli->prepare("
     SELECT id, group_name
     FROM cell_groups
@@ -66,25 +64,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
     $success = "✅ Meeting added successfully!";
 }
 
-// ✅ Fetch members under this leader
+// ✅ Fetch all members under this leader
 $members_stmt = $mysqli->prepare("
-    SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
+    SELECT 
+        u.user_code, 
+        CONCAT(u.firstname, ' ', u.lastname) AS fullname, 
+        u.email, 
+        u.contact
     FROM cell_group_members m
     JOIN users u ON m.user_code = u.user_code
     WHERE m.cell_group_id = ?
     ORDER BY u.lastname ASC
 ");
-
 $members_stmt->bind_param("i", $group_id);
 $members_stmt->execute();
 $members = $members_stmt->get_result();
 
-// ✅ Fetch all meetings
+// ✅ Fetch all meetings with attendance summary
 $meetings_stmt = $mysqli->prepare("
-    SELECT id, title, description, meeting_date
-    FROM cell_group_meetings
-    WHERE cell_group_id = ?
-    ORDER BY meeting_date DESC
+    SELECT 
+        m.id, 
+        m.title, 
+        m.description, 
+        m.meeting_date,
+        COUNT(a.user_code) AS total_marked,
+        SUM(a.status = 'Present') AS present_count,
+        SUM(a.status = 'Absent') AS absent_count,
+        SUM(a.status = 'Late') AS late_count
+    FROM cell_group_meetings m
+    LEFT JOIN cell_group_attendance a ON m.id = a.meeting_id
+    WHERE m.cell_group_id = ?
+    GROUP BY m.id
+    ORDER BY m.meeting_date DESC
 ");
 $meetings_stmt->bind_param("i", $group_id);
 $meetings_stmt->execute();
@@ -98,14 +109,22 @@ $meetings = $meetings_stmt->get_result();
 <title>📅 My Cell Group (Leader) | UCF</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.cell-container { background:#fff; padding:25px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); max-width:1100px; margin:30px auto; }
+.cell-container {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 1100px;
+    margin: 30px auto;
+}
 .section-title { color:#0271c0; border-bottom:2px solid #0271c0; padding-bottom:5px; margin-bottom:15px; }
-table { width:100%; border-collapse:collapse; margin-top:15px; }
-th, td { padding:10px; border-bottom:1px solid #e6e6e6; text-align:center; }
-th { background:#0271c0; color:white; }
 .save-btn { background:#0271c0; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
 .save-btn:hover { background:#02589b; }
 .success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:600; }
+.table { width:100%; border-collapse:collapse; margin-top:15px; }
+th, td { padding:10px; border-bottom:1px solid #e6e6e6; text-align:center; }
+th { background:#0271c0; color:white; }
+.stats { background:#f4f7fa; padding:5px 10px; border-radius:6px; font-size:0.9em; }
 </style>
 </head>
 
@@ -138,22 +157,35 @@ th { background:#0271c0; color:white; }
 
          <!-- Meeting List -->
          <section style="margin-top:30px;">
-            <h2 class="section-title">📅 Meetings</h2>
+            <h2 class="section-title">📋 Meetings & Attendance Summary</h2>
             <?php if ($meetings->num_rows === 0): ?>
                <p>No meetings scheduled yet.</p>
             <?php else: ?>
-               <table>
+               <table class="table">
                   <thead>
-                     <tr><th>Date</th><th>Title</th><th>Description</th><th>Mark Attendance</th></tr>
+                     <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Marked</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Late</th>
+                        <th>Action</th>
+                     </tr>
                   </thead>
                   <tbody>
-                     <?php while ($meeting = $meetings->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars(date('F j, Y', strtotime($meeting['meeting_date']))) ?></td>
-                           <td><?= htmlspecialchars($meeting['title']) ?></td>
-                           <td><?= htmlspecialchars($meeting['description']) ?></td>
-                           <td><a href="cell_group_attendance.php?meeting_id=<?= $meeting['id'] ?>" class="save-btn">📝 Mark Attendance</a></td>
-                        </tr>
+                     <?php while ($m = $meetings->fetch_assoc()): ?>
+                     <tr>
+                        <td><?= htmlspecialchars(date('F j, Y', strtotime($m['meeting_date']))) ?></td>
+                        <td><?= htmlspecialchars($m['title']) ?></td>
+                        <td><?= htmlspecialchars($m['description']) ?></td>
+                        <td><span class="stats"><?= $m['total_marked'] ?></span></td>
+                        <td><span class="stats" style="color:green;"><?= $m['present_count'] ?></span></td>
+                        <td><span class="stats" style="color:red;"><?= $m['absent_count'] ?></span></td>
+                        <td><span class="stats" style="color:orange;"><?= $m['late_count'] ?></span></td>
+                        <td><a href="cell_group_attendance.php?meeting_id=<?= $m['id'] ?>" class="save-btn">📝 Mark</a></td>
+                     </tr>
                      <?php endwhile; ?>
                   </tbody>
                </table>
@@ -166,16 +198,16 @@ th { background:#0271c0; color:white; }
             <?php if ($members->num_rows === 0): ?>
                <p>No members assigned to your group yet.</p>
             <?php else: ?>
-               <table>
+               <table class="table">
                   <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
                   <tbody>
                      <?php while ($m = $members->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars($m['user_code']) ?></td>
-                           <td><?= htmlspecialchars($m['fullname']) ?></td>
-                           <td><?= htmlspecialchars($m['email']) ?></td>
-                           <td><?= htmlspecialchars($m['contact']) ?></td>
-                        </tr>
+                     <tr>
+                        <td><?= htmlspecialchars($m['user_code']) ?></td>
+                        <td><?= htmlspecialchars($m['fullname']) ?></td>
+                        <td><?= htmlspecialchars($m['email']) ?></td>
+                        <td><?= htmlspecialchars($m['contact']) ?></td>
+                     </tr>
                      <?php endwhile; ?>
                   </tbody>
                </table>
