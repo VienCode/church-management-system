@@ -8,14 +8,14 @@ $user_email = $_SESSION['email'] ?? null;
 $user_code = $_SESSION['user_code'] ?? null;
 $fullname = trim(($_SESSION['firstname'] ?? '') . ' ' . ($_SESSION['lastname'] ?? ''));
 
-// ✅ STEP 1: Ensure the leader is registered in `leaders`
+// ✅ 1️⃣ Ensure the leader exists in leaders table
 $check_leader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE email = ? LIMIT 1");
 $check_leader->bind_param("s", $user_email);
 $check_leader->execute();
 $leader_data = $check_leader->get_result()->fetch_assoc();
 $check_leader->close();
 
-if (!$leader_data && !empty($user_email)) {
+if (!$leader_data) {
     $insert = $mysqli->prepare("
         INSERT INTO leaders (leader_name, email, contact, status, created_at)
         VALUES (?, ?, (SELECT contact FROM users WHERE email = ? LIMIT 1), 'active', NOW())
@@ -25,7 +25,7 @@ if (!$leader_data && !empty($user_email)) {
     $insert->close();
 }
 
-// ✅ STEP 2: Re-fetch leader data
+// ✅ 2️⃣ Fetch leader info
 $leader_stmt = $mysqli->prepare("SELECT * FROM leaders WHERE email = ? LIMIT 1");
 $leader_stmt->bind_param("s", $user_email);
 $leader_stmt->execute();
@@ -33,13 +33,13 @@ $leader = $leader_stmt->get_result()->fetch_assoc();
 $leader_stmt->close();
 
 if (!$leader) {
-    echo "<h2 style='text-align:center;color:red;'>❌ Could not load your leader profile. Contact admin.</h2>";
+    echo "<h2 style='text-align:center;color:red;'>❌ Leader profile missing. Contact admin.</h2>";
     exit;
 }
 
 $leader_id = $leader['leader_id'];
 
-// ✅ STEP 3: Ensure the leader has a cell group
+// ✅ 3️⃣ Ensure cell group exists
 $group_stmt = $mysqli->prepare("SELECT id, group_name FROM cell_groups WHERE leader_id = ? AND status = 'active' LIMIT 1");
 $group_stmt->bind_param("i", $leader_id);
 $group_stmt->execute();
@@ -48,7 +48,10 @@ $group_stmt->close();
 
 if (!$group) {
     $group_name = "$fullname's Cell Group";
-    $create_group = $mysqli->prepare("INSERT INTO cell_groups (group_name, leader_id, status, created_at) VALUES (?, ?, 'active', NOW())");
+    $create_group = $mysqli->prepare("
+        INSERT INTO cell_groups (group_name, leader_id, status, created_at)
+        VALUES (?, ?, 'active', NOW())
+    ");
     $create_group->bind_param("si", $group_name, $leader_id);
     $create_group->execute();
     $group_id = $create_group->insert_id;
@@ -58,7 +61,36 @@ if (!$group) {
     $group_name = $group['group_name'];
 }
 
-// ✅ STEP 4: Handle meeting creation
+// ✅ 4️⃣ Auto-sync members (adds all users with this leader_id)
+$sync = $mysqli->prepare("
+    SELECT user_code FROM users 
+    WHERE leader_id = ? AND role_id = 3
+");
+$sync->bind_param("i", $leader_id);
+$sync->execute();
+$result = $sync->get_result();
+
+while ($u = $result->fetch_assoc()) {
+    $code = $u['user_code'];
+    $check = $mysqli->prepare("SELECT id FROM cell_group_members WHERE cell_group_id = ? AND user_code = ?");
+    $check->bind_param("is", $group_id, $code);
+    $check->execute();
+    $exists = $check->get_result()->num_rows > 0;
+    $check->close();
+
+    if (!$exists) {
+        $insert = $mysqli->prepare("
+            INSERT INTO cell_group_members (cell_group_id, user_code)
+            VALUES (?, ?)
+        ");
+        $insert->bind_param("is", $group_id, $code);
+        $insert->execute();
+        $insert->close();
+    }
+}
+$sync->close();
+
+// ✅ 5️⃣ Handle meeting creation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
     $title = trim($_POST['title']);
     $description = trim($_POST['description']);
@@ -71,24 +103,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_meeting'])) {
     $stmt->bind_param("isss", $group_id, $title, $description, $meeting_date);
     $stmt->execute();
     $stmt->close();
-
     $success = "✅ Meeting added successfully!";
 }
 
-// ✅ STEP 5: Fetch members (based on user_code)
+// ✅ 6️⃣ Fetch members excluding the leader herself
 $members_stmt = $mysqli->prepare("
     SELECT u.user_code, CONCAT(u.firstname, ' ', u.lastname) AS fullname, u.email, u.contact
     FROM cell_group_members m
     JOIN users u ON m.user_code = u.user_code
-    WHERE m.cell_group_id = ?
+    WHERE m.cell_group_id = ? AND u.email != ?
     ORDER BY u.lastname ASC
 ");
-$members_stmt->bind_param("i", $group_id);
+$members_stmt->bind_param("is", $group_id, $user_email);
 $members_stmt->execute();
 $members = $members_stmt->get_result();
 $members_stmt->close();
 
-// ✅ STEP 6: Fetch meetings
+// ✅ 7️⃣ Fetch meetings
 $meetings_stmt = $mysqli->prepare("
     SELECT id, title, description, meeting_date
     FROM cell_group_meetings
@@ -100,124 +131,59 @@ $meetings_stmt->execute();
 $meetings = $meetings_stmt->get_result();
 $meetings_stmt->close();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>📅 My Cell Group (Leader) | UCF</title>
+<title>📅 My Cell Group (Leader)</title>
 <link rel="stylesheet" href="styles_system.css">
 <style>
-.cell-container {
-    background: #fff;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    max-width: 1100px;
-    margin: 30px auto;
-}
-.section-title {
-    color: #0271c0;
-    border-bottom: 2px solid #0271c0;
-    padding-bottom: 5px;
-    margin-bottom: 15px;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-th, td {
-    padding: 10px;
-    border-bottom: 1px solid #e6e6e6;
-    text-align: center;
-}
-th {
-    background: #0271c0;
-    color: white;
-}
-.save-btn {
-    background:#0271c0; color:white; border:none;
-    padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600;
-}
-.save-btn:hover { background:#02589b; }
-.success { background:#e6ffed; color:#256029; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:600; }
+.cell-container {background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:1100px;margin:30px auto;}
+.section-title {color:#0271c0;border-bottom:2px solid #0271c0;padding-bottom:5px;margin-bottom:15px;}
+table {width:100%;border-collapse:collapse;margin-top:15px;}
+th,td {padding:10px;border-bottom:1px solid #e6e6e6;text-align:center;}
+th {background:#0271c0;color:white;}
+.save-btn {background:#0271c0;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;}
+.save-btn:hover {background:#02589b;}
+.success {background:#e6ffed;color:#256029;padding:12px;border-radius:8px;margin-bottom:15px;font-weight:600;}
 </style>
 </head>
 
 <body>
 <div class="main-layout">
-   <?php include __DIR__ . '/includes/sidebar.php'; ?>
-   <div class="content-area">
-      <div class="cell-container">
-         <h1>📅 My Cell Group</h1>
-         <p>Welcome, <strong><?= htmlspecialchars($leader['leader_name']) ?></strong>! You’re managing <strong><?= htmlspecialchars($group_name) ?></strong>.</p>
+<?php include __DIR__ . '/includes/sidebar.php'; ?>
+<div class="content-area">
+<div class="cell-container">
+<h1>📅 My Cell Group</h1>
+<p>Welcome, <strong><?= htmlspecialchars($leader['leader_name']) ?></strong>! You’re managing <strong><?= htmlspecialchars($group_name) ?></strong>.</p>
 
-         <?php if (!empty($success)): ?>
-            <div class="success"><?= $success ?></div>
-         <?php endif; ?>
+<?php if (!empty($success)): ?>
+<div class="success"><?= $success ?></div>
+<?php endif; ?>
 
-         <!-- Add Meeting -->
-         <section>
-            <h2 class="section-title">➕ Add New Meeting</h2>
-            <form method="POST">
-               <label>Meeting Title:</label><br>
-               <input type="text" name="title" required style="width:100%; padding:8px; margin-bottom:10px;"><br>
-               <label>Description:</label><br>
-               <textarea name="description" rows="3" style="width:100%; padding:8px; margin-bottom:10px;"></textarea><br>
-               <label>Date:</label><br>
-               <input type="date" name="meeting_date" required style="padding:8px; margin-bottom:10px;"><br>
-               <button type="submit" name="add_meeting" class="save-btn">💾 Save Meeting</button>
-            </form>
-         </section>
-
-         <!-- Meeting List -->
-         <section style="margin-top:30px;">
-            <h2 class="section-title">📅 Meetings</h2>
-            <?php if ($meetings->num_rows === 0): ?>
-               <p>No meetings scheduled yet.</p>
-            <?php else: ?>
-               <table>
-                  <thead>
-                     <tr><th>Date</th><th>Title</th><th>Description</th><th>Mark Attendance</th></tr>
-                  </thead>
-                  <tbody>
-                     <?php while ($meeting = $meetings->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars(date('F j, Y', strtotime($meeting['meeting_date']))) ?></td>
-                           <td><?= htmlspecialchars($meeting['title']) ?></td>
-                           <td><?= htmlspecialchars($meeting['description']) ?></td>
-                           <td><a href="cell_group_attendance.php?meeting_id=<?= $meeting['id'] ?>" class="save-btn">📝 Mark Attendance</a></td>
-                        </tr>
-                     <?php endwhile; ?>
-                  </tbody>
-               </table>
-            <?php endif; ?>
-         </section>
-
-         <!-- Members List -->
-         <section style="margin-top:30px;">
-            <h2 class="section-title">👥 Members</h2>
-            <?php if ($members->num_rows === 0): ?>
-               <p>No members assigned to your group yet.</p>
-            <?php else: ?>
-               <table>
-                  <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
-                  <tbody>
-                     <?php while ($m = $members->fetch_assoc()): ?>
-                        <tr>
-                           <td><?= htmlspecialchars($m['user_code']) ?></td>
-                           <td><?= htmlspecialchars($m['fullname']) ?></td>
-                           <td><?= htmlspecialchars($m['email']) ?></td>
-                           <td><?= htmlspecialchars($m['contact']) ?></td>
-                        </tr>
-                     <?php endwhile; ?>
-                  </tbody>
-               </table>
-            <?php endif; ?>
-         </section>
-      </div>
-   </div>
+<!-- Members -->
+<section style="margin-top:30px;">
+<h2 class="section-title">👥 Members</h2>
+<?php if ($members->num_rows === 0): ?>
+<p>No members assigned to your group yet.</p>
+<?php else: ?>
+<table>
+<thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
+<tbody>
+<?php while ($m = $members->fetch_assoc()): ?>
+<tr>
+<td><?= htmlspecialchars($m['user_code']) ?></td>
+<td><?= htmlspecialchars($m['fullname']) ?></td>
+<td><?= htmlspecialchars($m['email']) ?></td>
+<td><?= htmlspecialchars($m['contact']) ?></td>
+</tr>
+<?php endwhile; ?>
+</tbody>
+</table>
+<?php endif; ?>
+</section>
+</div>
+</div>
 </div>
 </body>
 </html>
