@@ -75,7 +75,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
 
     <div class="content-area">
         <div class="promotion-container">
-            <h1>🕊️ Promotion Panel</h1>
+            <h1>🕊️ Endorsement Panel</h1>
             <p>These Non-Members have reached 10 or more attendances. Assign them a leader and promote them to Members.</p>
 
             <?php if (isset($_SESSION['promotion_result'])): ?>
@@ -95,7 +95,7 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                             <th>Contact</th>
                             <th>Attendances</th>
                             <th>Assign Leader</th>
-                            <th>Promote</th>
+                            <th>Endorse</th>
                         </tr>
                     </thead>
                     <tbody>
