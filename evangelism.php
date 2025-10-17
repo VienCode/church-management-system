@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_LEADER, ROLE_ATTENDANCE_MARKER]);
 
 $current_user_code = $_SESSION['user_code'] ?? null;
@@ -10,14 +11,14 @@ $today = date('Y-m-d');
 $attendance_date = $_POST['attendance_date'] ?? ($_SESSION['evangelism_date'] ?? $today);
 $_SESSION['evangelism_date'] = $attendance_date;
 
-// Handle save attendance
+//  Handle save attendance
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
     foreach ($_POST['attendance'] as $id => $data) {
         $status = $data['status'] ?? null;
         $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
         if ($status) {
-            // ✅ STEP 1: Check BEFORE inserting if record already exists for this date
+            // STEP 1: Check BEFORE inserting if record already exists for this date
             $check = $mysqli->prepare("
                 SELECT status 
                 FROM evangelism_attendance 
@@ -32,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
 
             $already_present_today = ($existing_record && $existing_record['status'] === 'Present');
 
-            // ✅ STEP 2: Insert or update the attendance record
+            // STEP 2: Insert or update the attendance record
             $stmt = $mysqli->prepare("
                 INSERT INTO evangelism_attendance (non_member_id, attendance_date, status, time_in, recorded_by)
                 VALUES (?, ?, ?, ?, ?)
@@ -43,8 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
             ");
             $stmt->bind_param("issss", $id, $attendance_date, $status, $time_in, $current_user_code);
             $stmt->execute();
+            $stmt->close();
 
-            // ✅ STEP 3: Increment count ONLY IF first Present for this date
+            // STEP 3: Increment count ONLY IF first Present for this date
             if ($status === 'Present' && !$already_present_today) {
                 $update = $mysqli->prepare("
                     UPDATE non_members 
@@ -55,6 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evangelism'])) {
                 $update->bind_param("si", $attendance_date, $id);
                 $update->execute();
                 $update->close();
+
+                // Fetch non-member name for logging
+                $name_stmt = $mysqli->prepare("SELECT firstname, lastname FROM non_members WHERE id = ?");
+                $name_stmt->bind_param("i", $id);
+                $name_stmt->execute();
+                $member = $name_stmt->get_result()->fetch_assoc();
+                $name_stmt->close();
+
+                $fullname = $member ? $member['firstname'] . ' ' . $member['lastname'] : 'Unknown';
+
+                // Centralized log entry for evangelism attendance
+                log_action(
+                    $mysqli,
+                    $_SESSION['user_id'],     // who recorded
+                    $_SESSION['role'],        // role of recorder
+                    'EVANGELISM',             // action type
+                    "Recorded evangelism attendance for {$fullname}", // message
+                    'Normal'                  // severity
+                );
             }
         }
     }

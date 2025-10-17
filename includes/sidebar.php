@@ -31,7 +31,6 @@
         <?php if (can_access([ROLE_LEADER, ROLE_MEMBER])): ?>
         <li class="nav-divider"></li>
         <li class="nav-section">Cell Groups</li>
-
         <?php if (can_access([ROLE_LEADER])): ?>
             <li><a href="cell_group_leader.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_leader.php' ? 'active' : '' ?>"><span>📅</span> My Cell Group (Leader)</a></li>
             <li><a href="cell_group_attendance.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_attendance.php' ? 'active' : '' ?>"><span>📝</span> Mark Attendance</a></li>
@@ -74,12 +73,12 @@
         <?php if (can_access([ROLE_ADMIN])): ?>
         <li class="nav-divider"></li>
         <li class="nav-section">🧩 System</li>
-        <li><a href="logs.php" class="<?= basename($_SERVER['PHP_SELF']) == 'logs.php' ? 'active' : '' ?>"><span>🗂️</span> Activity Logs</a></li>
         <li><a href="admin_dashboard.php" class="<?= basename($_SERVER['PHP_SELF']) == 'admin_dashboard.php' ? 'active' : '' ?>"><span>⚙️</span> Manage Users</a></li>
         <li><a href="leaders_management.php" class="<?= basename($_SERVER['PHP_SELF']) == 'leaders_management.php' ? 'active' : '' ?>"><span>👑</span> Leaders Management</a></li>
         <li><a href="unassigned_members.php" class="<?= basename($_SERVER['PHP_SELF']) == 'unassigned_members.php' ? 'active' : '' ?>"><span>📜</span> Unassigned Members</a></li>
         <li><a href="cell_group_overview.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_overview.php' ? 'active' : '' ?>"><span>📊</span> Groups Overview</a></li>
         <li><a href="cell_groups_admin.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_groups_admin.php' ? 'active' : '' ?>"><span>🧩</span> Manage Cell Groups</a></li>
+        <li><a href="activity_logs.php" class="<?= basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : '' ?>"><span>🗂️</span> Activity Logs</a></li>
         <?php endif; ?>
 
         <!-- LOGOUT -->

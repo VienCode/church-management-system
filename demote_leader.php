@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; //  Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN]); // Only Admins can demote leaders
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
@@ -26,13 +27,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $email = trim($user["email"]);
     $old_code = $user["user_code"];
 
-    // 🧩 2️⃣ Verify the user is currently a leader
+    //  Verify the user is currently a leader
     if ($user["role_id"] != ROLE_LEADER) {
         header("Location: admin_dashboard.php?msg=⚠️ $fullname is not currently a leader.");
         exit();
     }
 
-    // 🧩 3️⃣ Get leader_id from leaders table
+    //  Get leader_id from leaders table
     $leader_stmt = $mysqli->prepare("
         SELECT leader_id 
         FROM leaders 
@@ -46,16 +47,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
 
     $leader_id = $leader_data['leader_id'] ?? null;
 
-    // 🧩 4️⃣ Convert their user code from L → M (if needed)
+    //  Convert their user code from L → M (if needed)
     $new_code = preg_replace('/^L/', 'M', $old_code);
     if ($new_code === $old_code) {
         $new_code = 'M' . substr($old_code, 1);
     }
 
-    // 🧩 5️⃣ Temporarily disable FK checks (avoid trigger issue)
+    //  Temporarily disable FK checks (avoid trigger issue)
     $mysqli->query("SET FOREIGN_KEY_CHECKS=0");
 
-    // 🧩 6️⃣ Update the user's role, code, and clear leader link
+    //  Update the user's role, code, and clear leader link
     $update = $mysqli->prepare("
         UPDATE users 
         SET role_id = 3, user_code = ?, leader_id = NULL, is_cell_member = 0
@@ -65,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $update->execute();
     $update->close();
 
-    // 🧩 7️⃣ Unassign all members linked to this leader (safe bulk update)
+    //  Unassign all members linked to this leader (safe bulk update)
     if ($leader_id) {
         // Unassign users under this leader
         $unassign = $mysqli->prepare("
@@ -103,11 +104,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
         ");
     }
 
-    // 🧩 8️⃣ Re-enable FK checks
+    //  Re-enable FK checks
     $mysqli->query("SET FOREIGN_KEY_CHECKS=1");
 
-    // 🧩 9️⃣ Log the role change
+    //  Log the role change (local + centralized)
     $admin_id = $_SESSION['user_id'];
+
+    // Local role log
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
         VALUES (?, 'Leader', 'Member', ?, NOW())
@@ -116,7 +119,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
-    // ✅ Done
+    //  Centralized role change log
+    log_role_change(
+        $mysqli,
+        $_SESSION['user_id'],   // Who performed the action
+        $_SESSION['role'],      // Role of the one performing (Admin)
+        $fullname,              // Whose role was changed
+        'Member',               // New role after demotion
+        'DEMOTE'                // Action type
+    );
+
+    // Centralized action log for unassigning members
+    log_action(
+        $mysqli,
+        $_SESSION['user_id'],
+        $_SESSION['role'],
+        'UNASSIGN',
+        "Unassigned members previously under leader {$fullname}",
+        'High'
+    );
+
+    // Done
     header("Location: admin_dashboard.php?msg=✅ $fullname has been demoted to Member. Group archived and members unassigned safely.");
     exit();
 }

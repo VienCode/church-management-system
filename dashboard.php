@@ -2,13 +2,13 @@
 include 'database.php';
 include 'auth_check.php';
 
-// ✅ Allow all key roles
+// Allow all key roles
 restrict_to_roles([
     ROLE_LEADER, ROLE_ATTENDANCE_MARKER, ROLE_EDITOR,
     ROLE_ADMIN, ROLE_MEMBER, ROLE_PASTOR, ROLE_ACCOUNTANT, ROLE_NON_MEMBER
 ]);
 
-// ✅ Logged-in user info
+// Logged-in user info
 $user_id = $_SESSION['user_id'];
 $firstname = $_SESSION['firstname'];
 $lastname = $_SESSION['lastname'];
@@ -16,7 +16,7 @@ $role_id = $_SESSION['role_id'];
 $role_name = ucfirst($_SESSION['role'] ?? 'User');
 $user_email = $_SESSION['email'] ?? '';
 
-// ✅ Basic summaries (common data)
+// Basic summaries (common data)
 $attendanceSummary = ['total' => 0, 'present' => 0, 'absent' => 0];
 $result = $mysqli->query("SELECT status, COUNT(*) as count FROM attendance GROUP BY status");
 if ($result) {
@@ -27,7 +27,7 @@ if ($result) {
     }
 }
 
-// ✅ Donations summary
+// Donations summary
 $donationsSummary = ['total_amount' => 0, 'donation_count' => 0];
 $res = $mysqli->query("SELECT COUNT(*) as total, SUM(amount) as total_amount FROM donations");
 if ($res && $row = $res->fetch_assoc()) {

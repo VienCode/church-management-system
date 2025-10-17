@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // ✅ Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_EDITOR]);
 
 $success = $error = "";
@@ -41,6 +42,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bind_param("sssiss", $title, $description, $image_path, $is_pinned, $posted_by, $posted_by_name);
         $stmt->execute();
         $stmt->close();
+
+        // ✅ Centralized log for posting new announcement
+        log_action(
+            $mysqli,
+            $_SESSION['user_id'],       // Who posted
+            $_SESSION['role'],          // Their role
+            'POST',                     // Action type
+            "Posted new announcement titled '{$title}'", // Log message
+            'Normal'                    // Severity
+        );
 
         $success = "✅ Announcement posted successfully!";
     }

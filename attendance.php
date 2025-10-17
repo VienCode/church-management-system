@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php';
 
 restrict_to_roles([ROLE_ADMIN, ROLE_ATTENDANCE_MARKER]);
 
@@ -24,13 +25,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_date'])) {
 $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
     $attendance_date = $_POST['attendance_date'] ?? date('Y-m-d');
+    $presentCount = $absentCount = 0;
 
     if (!empty($_POST['attendance']) && is_array($_POST['attendance'])) {
         foreach ($_POST['attendance'] as $user_code => $data) {
             $status = $data['status'] ?? null;
             $time_in = ($status === 'Present') ? ($data['time_in'] ?? date('H:i')) : null;
 
-            // Ensure the user exists
+            // ✅ Ensure the user exists
             $verify = $mysqli->prepare("SELECT user_code FROM users WHERE user_code = ?");
             $verify->bind_param("s", $user_code);
             $verify->execute();
@@ -48,15 +50,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_attendance'])) {
                 ");
                 $stmt->bind_param("sssss", $user_code, $attendance_date, $status, $time_in, $current_user_code);
                 $stmt->execute();
+                $stmt->close();
+
+                // ✅ Count totals for log
+                if ($status === 'Present') $presentCount++;
+                elseif ($status === 'Absent') $absentCount++;
             }
         }
+
+        // ✅ Show success message
         $success = "✅ Attendance saved for " . date("F j, Y", strtotime($attendance_date)) . "!";
+
+        // ✅ Log the attendance event (Centralized Logging)
+        $fullname = $_SESSION['firstname'] . ' ' . $_SESSION['lastname'];
+        $desc = "Recorded attendance for {$attendance_date} by {$fullname} (✅ Present: {$presentCount} | ❌ Absent: {$absentCount})";
+
+        log_action(
+            $mysqli,
+            $_SESSION['user_id'],
+            $_SESSION['role'] ?? 'Unknown',
+            'ATTENDANCE',
+            $desc,
+            'Normal'
+        );
+
     } else {
         $success = "⚠️ No attendance data submitted.";
     }
 }
 
-// ✅ Fetch users except Non-Members (role_id = 4)
+// ✅ Pagination setup
+$limit = 10; // Records per page
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int) $_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// ✅ Count total members (excluding non-members)
+$count_result = $mysqli->query("SELECT COUNT(*) AS total FROM users WHERE role_id != 4");
+$total_members = $count_result->fetch_assoc()['total'];
+$total_pages = ceil($total_members / $limit);
+
+// ✅ Fetch paginated members
 $sql = "
 SELECT 
     u.user_code,
@@ -71,9 +104,10 @@ LEFT JOIN attendance a
     AND a.attendance_date = ?
 WHERE u.role_id != 4
 ORDER BY u.lastname ASC, u.firstname ASC
+LIMIT ? OFFSET ?
 ";
 $stmt = $mysqli->prepare($sql);
-$stmt->bind_param("s", $attendance_date);
+$stmt->bind_param("sii", $attendance_date, $limit, $offset);
 $stmt->execute();
 $members = $stmt->get_result();
 
@@ -84,8 +118,8 @@ while ($row = $members->fetch_assoc()) {
     if ($row['status'] === 'Absent')  $absentCount++;
     $rows[] = $row;
 }
-$totalMembers = count($rows);
-$notMarked = $totalMembers - ($presentCount + $absentCount);
+$totalCurrentPage = count($rows);
+$notMarked = $totalCurrentPage - ($presentCount + $absentCount);
 $stmt->close();
 ?>
 
@@ -112,6 +146,10 @@ th { background:#0271c0; color:#fff; }
 .summary { margin-top:18px; display:flex; gap:10px; justify-content:center; }
 .summary div { background:#f6f8fb; padding:10px 18px; border-radius:8px; font-weight:600; }
 input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
+.pagination { text-align:center; margin-top:20px; }
+.pagination a { margin:0 5px; padding:8px 12px; background:#f0f0f0; border-radius:6px; text-decoration:none; color:#333; font-weight:600; }
+.pagination a.active { background:#0271c0; color:white; }
+.pagination a:hover { background:#005fa3; color:white; }
 </style>
 </head>
 
@@ -120,69 +158,76 @@ input[type="date"] { padding:8px; border-radius:6px; border:1px solid #ccc; }
 <div class="main-layout">
    <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
-    <div class="content-area">
-        <div class="attendance-container">
-            <h1>👥 Attendance Management</h1>
-            <?php if ($success): ?>
-                <div class="success"><?= htmlspecialchars($success) ?></div>
-            <?php endif; ?>
+   <div class="content-area">
+       <div class="attendance-container">
+           <h1>👥 Attendance Management</h1>
+           <?php if ($success): ?>
+               <div class="success"><?= htmlspecialchars($success) ?></div>
+           <?php endif; ?>
 
-            <!-- Date Selection -->
-            <form method="POST">
-                <label><strong>Attendance Date:</strong></label>
-                <input type="date" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
-                <button type="submit" name="view_attendance" class="save-btn" style="padding:8px 12px;">View</button>
-            </form>
+           <!-- Date Selection -->
+           <form method="POST">
+               <label><strong>Attendance Date:</strong></label>
+               <input type="date" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>" max="<?= date('Y-m-d') ?>" required>
+               <button type="submit" name="view_attendance" class="save-btn" style="padding:8px 12px;">View</button>
+           </form>
 
-            <!-- Attendance Table -->
-            <form method="POST" style="margin-top:20px;">
-                <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User Code</th>
-                            <th>Full Name</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Time In</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($rows)): ?>
-                            <tr><td colspan="6">No members found.</td></tr>
-                        <?php else: $i = 1; foreach ($rows as $row): ?>
-                            <tr data-user="<?= htmlspecialchars($row['user_code']) ?>">
-                                <td><?= $i++ ?></td>
-                                <td><strong><?= htmlspecialchars($row['user_code']) ?></strong></td>
-                                <td><?= htmlspecialchars($row['fullname']) ?></td>
-                                <td><?= htmlspecialchars($row['role_name']) ?></td>
-                                <td>
-                                    <button type="button" class="present-btn <?= ($row['status'] === 'Present') ? 'active' : '' ?>" data-action="present">Present</button>
-                                    <button type="button" class="absent-btn <?= ($row['status'] === 'Absent') ? 'active' : '' ?>" data-action="absent">Absent</button>
-                                    <input type="hidden" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][status]" value="<?= htmlspecialchars($row['status'] ?? '') ?>">
-                                </td>
-                                <td>
-                                    <input type="time" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][time_in]" class="time-input"
-                                           value="<?= htmlspecialchars($row['time_in'] ?? '') ?>" <?= ($row['status'] === 'Present') ? '' : 'disabled' ?>>
-                                </td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
+           <!-- Attendance Table -->
+           <form method="POST" style="margin-top:20px;">
+               <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($attendance_date) ?>">
+               <table>
+                   <thead>
+                       <tr>
+                           <th>#</th>
+                           <th>User Code</th>
+                           <th>Full Name</th>
+                           <th>Role</th>
+                           <th>Status</th>
+                           <th>Time In</th>
+                       </tr>
+                   </thead>
+                   <tbody>
+                       <?php if (empty($rows)): ?>
+                           <tr><td colspan="6">No members found.</td></tr>
+                       <?php else: $i = $offset + 1; foreach ($rows as $row): ?>
+                           <tr data-user="<?= htmlspecialchars($row['user_code']) ?>">
+                               <td><?= $i++ ?></td>
+                               <td><strong><?= htmlspecialchars($row['user_code']) ?></strong></td>
+                               <td><?= htmlspecialchars($row['fullname']) ?></td>
+                               <td><?= htmlspecialchars($row['role_name']) ?></td>
+                               <td>
+                                   <button type="button" class="present-btn <?= ($row['status'] === 'Present') ? 'active' : '' ?>" data-action="present">Present</button>
+                                   <button type="button" class="absent-btn <?= ($row['status'] === 'Absent') ? 'active' : '' ?>" data-action="absent">Absent</button>
+                                   <input type="hidden" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][status]" value="<?= htmlspecialchars($row['status'] ?? '') ?>">
+                               </td>
+                               <td>
+                                   <input type="time" name="attendance[<?= htmlspecialchars($row['user_code']) ?>][time_in]" class="time-input"
+                                          value="<?= htmlspecialchars($row['time_in'] ?? '') ?>" <?= ($row['status'] === 'Present') ? '' : 'disabled' ?>>
+                               </td>
+                           </tr>
+                       <?php endforeach; endif; ?>
+                   </tbody>
+               </table>
 
-                <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
-            </form>
+               <center><button type="submit" name="save_attendance" class="save-btn">💾 Save Attendance</button></center>
+           </form>
 
-            <!-- Summary Counter -->
-            <div class="summary" id="liveSummary">
-                <div id="sumPresent">✅ Present: <?= $presentCount ?></div>
-                <div id="sumAbsent">❌ Absent: <?= $absentCount ?></div>
-                <div id="sumNot">⏳ Not Marked: <?= $notMarked ?></div>
-                <div id="sumTotal">👥 Total: <?= $totalMembers ?></div>
-            </div>
-        </div>
-    </div>
+           <!-- Pagination -->
+           <div class="pagination">
+               <?php for ($p = 1; $p <= $total_pages; $p++): ?>
+                   <a href="?page=<?= $p ?>" class="<?= $p == $page ? 'active' : '' ?>"><?= $p ?></a>
+               <?php endfor; ?>
+           </div>
+
+           <!-- Summary Counter -->
+           <div class="summary" id="liveSummary">
+               <div id="sumPresent">✅ Present: <?= $presentCount ?></div>
+               <div id="sumAbsent">❌ Absent: <?= $absentCount ?></div>
+               <div id="sumNot">⏳ Not Marked: <?= $notMarked ?></div>
+               <div id="sumTotal">👥 Showing <?= $totalCurrentPage ?> of <?= $total_members ?> members</div>
+           </div>
+       </div>
+   </div>
 </div>
 
 <script>
@@ -217,7 +262,7 @@ document.addEventListener('click', e => {
     }
 });
 
-// Live counter
+// Live summary counter
 function updateSummary() {
     const rows = [...document.querySelectorAll('tbody tr[data-user]')];
     let present = 0, absent = 0, total = rows.length;
@@ -230,9 +275,8 @@ function updateSummary() {
     document.getElementById('sumPresent').textContent = '✅ Present: ' + present;
     document.getElementById('sumAbsent').textContent = '❌ Absent: ' + absent;
     document.getElementById('sumNot').textContent = '⏳ Not Marked: ' + not;
-    document.getElementById('sumTotal').textContent = '👥 Total: ' + total;
+    document.getElementById('sumTotal').textContent = '👥 Showing ' + total + ' of <?= $total_members ?> members';
 }
-
 </script>
 </body>
 </html>

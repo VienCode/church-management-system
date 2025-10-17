@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // ✅ Add centralized logging helper
 restrict_to_roles([ROLE_ADMIN]); // Only Admins can promote
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
@@ -88,8 +89,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
         $insert_group->close();
     }
 
-    // 🔹 5. Log promotion
+    // 🔹 5. Log promotion (local + centralized log)
     $admin_id = $_SESSION["user_id"];
+
+    // Local logging in role_logs
     $log = $mysqli->prepare("
         INSERT INTO role_logs (user_id, old_role, new_role, changed_by, changed_at)
         VALUES (?, ?, 'Leader', ?, NOW())
@@ -98,8 +101,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["user_id"])) {
     $log->execute();
     $log->close();
 
+    // ✅ Centralized system log entry
+    log_role_change(
+        $mysqli,
+        $_SESSION['user_id'],     // who made the change (admin)
+        $_SESSION['role'],        // admin’s role
+        $fullname,                // promoted user’s name
+        'Leader',                 // new role
+        'PROMOTE'                 // action type
+    );
+
     // Maintain is_cell_member flag for new leader
-$mysqli->query("UPDATE users SET is_cell_member = 1 WHERE id = $user_id");
+    $mysqli->query("UPDATE users SET is_cell_member = 1 WHERE id = $user_id");
 
     // Ensure all members under this leader are also cell members
     $mysqli->query("
@@ -107,7 +120,6 @@ $mysqli->query("UPDATE users SET is_cell_member = 1 WHERE id = $user_id");
         SET is_cell_member = 1 
         WHERE leader_id = (SELECT leader_id FROM leaders WHERE email = '$email' LIMIT 1)
     ");
-
 
     // 🔹 6. Redirect
     header("Location: admin_dashboard.php?msg=✅ $fullname has been promoted to Leader successfully and assigned to a new Cell Group!");

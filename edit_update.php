@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_EDITOR]); // Only Admins & Editors
 
 // --- Step 1: Validate update ID ---
@@ -53,6 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("sssii", $title, $description, $image_path, $is_pinned, $update_id);
 
     if ($stmt->execute()) {
+        // Log the edit action in centralized system log
+        log_action(
+            $mysqli,
+            $_SESSION['user_id'],          // Who performed the action
+            $_SESSION['role'],             // Their role
+            'EDIT',                        // Action type
+            "Edited announcement '{$title}' (ID: {$update_id})", // Description
+            'Normal'                       // Severity level
+        );
+
         header("Location: upload.php?msg=✅ Post updated successfully!");
         exit();
     } else {

@@ -1,11 +1,12 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // Include centralized logging helper
 restrict_to_roles([ROLE_PASTOR]);
 
 $pastor_code = $_SESSION['user_code'] ?? 'Unknown';
 
-// ✅ Handle approval or rejection (AJAX)
+// Handle approval or rejection (AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $expense_id = intval($_POST['expense_id']);
     $action = $_POST['action'];
@@ -19,6 +20,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ");
         $stmt->bind_param("sssi", $action, $remarks, $pastor_code, $expense_id);
         $stmt->execute();
+        $stmt->close();
+
+        // Log action to centralized log
+        if ($action === 'Approved') {
+            log_action(
+                $mysqli,
+                $_SESSION['user_id'],
+                $_SESSION['role'],
+                'APPROVE_EXPENSE',
+                "Approved expense request #{$expense_id}",
+                'High'
+            );
+        } elseif ($action === 'Rejected') {
+            log_action(
+                $mysqli,
+                $_SESSION['user_id'],
+                $_SESSION['role'],
+                'REJECT_EXPENSE',
+                "Rejected expense request #{$expense_id}",
+                'High'
+            );
+        }
 
         echo json_encode(["success" => true, "message" => "Expense $action successfully."]);
         exit;
@@ -28,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
-// ✅ Fetch pending expenses
+// Fetch pending expenses
 $result = $mysqli->query("
     SELECT * FROM expenses 
     WHERE status = 'Pending' 

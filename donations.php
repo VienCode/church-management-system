@@ -1,9 +1,10 @@
 <?php
 $mysqli = include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // ✅ Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_ACCOUNTANT]);
 
-// ✅ Handle new donation
+//  Handle new donation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_donation'])) {
     $amount = floatval($_POST['amount']);
     $donation_date = $_POST['donation_date'];
@@ -19,22 +20,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_donation'])) {
         VALUES (?, ?, ?, ?, ?, ?)
     ");
     $stmt->bind_param("dsssss", $amount, $donation_date, $purpose, $donor_name, $donation_description, $recorded_by);
-    $stmt->execute();
-    $success = "✅ Donation successfully recorded!";
+
+    if ($stmt->execute()) {
+        $success = "✅ Donation successfully recorded!";
+
+        // ✅ Centralized log entry for donation recording
+        log_action(
+            $mysqli,
+            $_SESSION['user_id'],          // who recorded
+            $_SESSION['role'],             // role of recorder
+            'ADD',                         // action type
+            "Recorded donation ₱{$amount} for {$purpose}", // message
+            'Normal'                       // severity
+        );
+    }
+
+    $stmt->close();
 }
 
-// ✅ Handle delete
+//  Handle delete
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     $mysqli->query("DELETE FROM donations WHERE id = $id");
     $success = "🗑️ Donation deleted successfully!";
+
+    // ✅ Log deletion event for accountability
+    log_action(
+        $mysqli,
+        $_SESSION['user_id'],
+        $_SESSION['role'],
+        'DELETE',
+        "Deleted donation record ID: {$id}",
+        'High'
+    );
 }
 
-// ✅ Fetch all donations
+// Fetch all donations
 $result = $mysqli->query("SELECT * FROM donations ORDER BY donation_date DESC");
 $donations = $result->fetch_all(MYSQLI_ASSOC);
 
-// ✅ Chart Data: Group by Purpose
+// Chart Data: Group by Purpose
 $chart_query = $mysqli->query("
     SELECT purpose, SUM(amount) AS total 
     FROM donations 

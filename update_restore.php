@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; //  Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_EDITOR]);
 
 // Handle restore
@@ -14,7 +15,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_id'])) {
     ");
     $stmt->bind_param("i", $restore_id);
     $stmt->execute();
-    header("Location: update_restore.php?msg=✅ Post restored successfully!");
+    $stmt->close();
+
+    //  Log restoration action
+    log_action(
+        $mysqli,
+        $_SESSION['user_id'],   // who performed the action
+        $_SESSION['role'],      // user's role
+        'RESTORE',              // action type
+        "Restored announcement ID: {$restore_id}", // description
+        'Normal'                // severity
+    );
+
+    header("Location: update_restore.php?msg=Post restored successfully!");
     exit();
 }
 
@@ -25,6 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $stmt = $mysqli->prepare("DELETE FROM church_updates WHERE update_id = ?");
     $stmt->bind_param("i", $delete_id);
     $stmt->execute();
+    $stmt->close();
+
+    //  Log permanent delete action
+    log_action(
+        $mysqli,
+        $_SESSION['user_id'],   // who performed the action
+        $_SESSION['role'],      // user's role
+        'DELETE',               // action type
+        "Permanently deleted announcement ID: {$delete_id}", // description
+        'High'                  // severity
+    );
+
     header("Location: update_restore.php?msg=🗑️ Post permanently deleted.");
     exit();
 }

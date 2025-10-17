@@ -1,6 +1,7 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
+include 'includes/log_helper.php'; // Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_PASTOR, ROLE_LEADER]);
 
 $user_code = $_SESSION['user_code'] ?? 'Unknown';
@@ -30,6 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_expense'])) {
     ");
     $stmt->bind_param("sssds", $user_code, $category, $description, $amount, $receipt_image);
     $stmt->execute();
+    $stmt->close();
+
+    // ✅ Centralized log entry for expense submission
+    log_action(
+        $mysqli,
+        $_SESSION['user_id'],          // who submitted
+        $_SESSION['role'],             // their role
+        'SUBMIT_EXPENSE',              // action type
+        "Submitted expense ₱{$amount} for {$category}", // description
+        'Normal'                       // severity
+    );
 
     $success = "✅ Expense submitted successfully and pending pastor approval.";
 }

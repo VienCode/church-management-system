@@ -1,6 +1,7 @@
 <?php
 session_start();
 $mysqli = require __DIR__ . "/database.php";
+include 'includes/log_helper.php'; // Include logging helper
 
 $is_invalid = false;
 
@@ -9,36 +10,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"]);
     $password = $_POST["password"];
 
-    // Search main users table
-    $sql = "SELECT * FROM users WHERE email = ? LIMIT 1";
+    // Step 1: Fetch user with JOIN to roles table for role name
+    $sql = "SELECT u.*, r.role_name AS role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.role_id
+            WHERE u.email = ? 
+            LIMIT 1";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
     $user = $result->fetch_assoc();
 
-    // If not found, search non_members
+    // Step 2: If not found in users, check non_members
     if (!$user) {
-        $sql = "SELECT * FROM non_members WHERE email = ? LIMIT 1";
+        $sql = "SELECT *, 'Non-member' AS role_name, 4 AS role_id 
+                FROM non_members 
+                WHERE email = ? 
+                LIMIT 1";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
         $user = $result->fetch_assoc();
-        if ($user) {
-            $user["role_id"] = 4; // Non-member
-        }
     }
 
-    // Correct password check
+    // Step 3: Verify password
     if ($user && password_verify($password, $user["pwd_hash"])) {
+        // --- Store session variables ---
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["firstname"] = $user["firstname"];
         $_SESSION["lastname"] = $user["lastname"];
-        $_SESSION["role_id"] = $user["role_id"];
         $_SESSION["email"] = $user["email"];
+        $_SESSION["role_id"] = $user["role_id"];
+        $_SESSION["role"] = $user["role_name"] ?? 'Unknown'; // ✅ Added (fixes undefined key)
 
+        // Log successful login
+        log_login_event($mysqli, $user['id'], $user['role_name'] ?? 'Unknown', true);
 
+        // --- Redirect based on role_id ---
         switch ($_SESSION["role_id"]) {
             case 1: // Admin
                 header("Location: admin_dashboard.php");
@@ -60,13 +70,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 header("Location: unauthorized.php");
         }
         exit;
-    }
 
-    // If invalid
-    $is_invalid = true;
+    } else {
+        // Log failed login attempt
+        log_failed_login($mysqli, $_POST['email']);
+        $is_invalid = true;
+    }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">

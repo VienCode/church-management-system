@@ -1,6 +1,8 @@
 <?php
 session_start();
 $mysqli = require __DIR__ . "/database.php";
+include 'includes/log_helper.php'; // Include centralized logging helper
+
 $errors = [];
 
 // === VALIDATION ===
@@ -74,7 +76,7 @@ if ($result->num_rows > 0) {
 $is_existing_member = $_POST["is_existing_member"] === "yes";
 
 if ($is_existing_member) {
-    // ✅ Existing members → users table
+    // Existing members → users table
     $role_id = 3; // Member
     $leader_id = $_POST["leader_id"] ?? null;
     $is_cell_member = !empty($leader_id) ? 1 : 0;
@@ -89,11 +91,10 @@ if ($is_existing_member) {
         $check_code->close();
     } while ($exists);
 
-    // ✅ Insert member into users
+    // Insert member into users
     $sql = "INSERT INTO users 
             (user_code, firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, created_at, role_id, leader_id, is_cell_member)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)";
-
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param(
         "sssisssssiii",
@@ -112,7 +113,18 @@ if ($is_existing_member) {
     );
 
     if ($stmt->execute()) {
-        // ✅ Auto-add to cell group if a leader was selected
+
+        // Centralized log for successful member registration
+        log_action(
+            $mysqli,
+            null,
+            'System',
+            'REGISTER',
+            "New member registered: {$_POST['firstname']} {$_POST['lastname']} ({$_POST['email']})",
+            'Normal'
+        );
+
+        // Auto-add to cell group if a leader was selected
         if (!empty($leader_id)) {
             $group_result = $mysqli->query("
                 SELECT id FROM cell_groups 
@@ -145,6 +157,7 @@ if ($is_existing_member) {
         $_SESSION['register_success'] = "🎉 You have been successfully registered as a <b>Member</b>!";
         header("Location: login.php");
         exit;
+
     } else {
         $_SESSION['register_errors'] = ["Database error: " . $stmt->error];
         header("Location: register.php");
@@ -152,7 +165,7 @@ if ($is_existing_member) {
     }
 
 } else {
-    // ✅ New attendees → non_members table
+    // New attendees → non_members table
     $role_id = 4; // Non-member
 
     // Generate unique guest code
@@ -168,7 +181,6 @@ if ($is_existing_member) {
     $sql = "INSERT INTO non_members 
             (user_code, firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, attendances_count, last_attended, created_at, role_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NOW(), ?)";
-
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param(
         "sssisssssi",
@@ -185,6 +197,17 @@ if ($is_existing_member) {
     );
 
     if ($stmt->execute()) {
+
+        // Centralized log for successful non-member registration
+        log_action(
+            $mysqli,
+            null,
+            'System',
+            'REGISTER',
+            "New non-member registered: {$_POST['firstname']} {$_POST['lastname']} ({$_POST['email']})",
+            'Normal'
+        );
+
         $_SESSION['registered_user'] = [
             'firstname' => $_POST["firstname"],
             'lastname' => $_POST["lastname"],
@@ -193,6 +216,7 @@ if ($is_existing_member) {
         ];
         header("Location: register_success.php");
         exit;
+
     } else {
         $_SESSION['register_errors'] = ["Database error: " . $stmt->error];
         header("Location: register.php");
