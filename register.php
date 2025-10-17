@@ -3,7 +3,7 @@ session_start();
 $mysqli = require __DIR__ . "/database.php";
 
 // Fetch leaders dynamically
-$leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
+$leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders WHERE status = 'active' ORDER BY leader_name ASC");
 
 if (isset($_SESSION['register_errors'])) {
     echo '<div style="color: #ff6666; font-weight: bold; margin-bottom: 15px;">';
