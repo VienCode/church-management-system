@@ -4,68 +4,6 @@ include 'auth_check.php';
 include 'includes/log_helper.php'; // Include centralized logging helper
 restrict_to_roles([ROLE_ADMIN]); // Admin-only access
 
-// Handle Promotion Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['promote_ids'])) {
-    $promote_ids = $_POST['promote_ids'];
-    $leader_ids = $_POST['leader_id'];
-
-    foreach ($promote_ids as $id) {
-        $id = intval($id);
-        $leader_id = intval($leader_ids[$id]);
-
-        // Fetch non-member info
-        $nm_stmt = $mysqli->prepare("SELECT * FROM non_members WHERE id = ?");
-        $nm_stmt->bind_param("i", $id);
-        $nm_stmt->execute();
-        $non_member = $nm_stmt->get_result()->fetch_assoc();
-        $nm_stmt->close();
-
-        if ($non_member) {
-            $fullname = $non_member['firstname'] . ' ' . $non_member['lastname'];
-
-            // Move record to users table
-            $insert = $mysqli->prepare("
-                INSERT INTO users (firstname, lastname, suffix, contact, age, user_address, email, pwd_hash, created_at, role_id, leader_id, is_cell_member)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 3, ?, 1)
-            ");
-            $insert->bind_param(
-                "sssissssi",
-                $non_member['firstname'],
-                $non_member['lastname'],
-                $non_member['suffix'],
-                $non_member['contact'],
-                $non_member['age'],
-                $non_member['user_address'],
-                $non_member['email'],
-                $non_member['pwd_hash'],
-                $leader_id
-            );
-            $insert->execute();
-            $insert->close();
-
-            // Delete from non_members
-            $del_stmt = $mysqli->prepare("DELETE FROM non_members WHERE id = ?");
-            $del_stmt->bind_param("i", $id);
-            $del_stmt->execute();
-            $del_stmt->close();
-
-            // ✅ Log the promotion in the centralized system log
-            log_role_change(
-                $mysqli,
-                $_SESSION['user_id'],     // who performed the action
-                $_SESSION['role'],        // role of the one promoting
-                $fullname,                // name of promoted user
-                'Member',                 // new role
-                'PROMOTE'                 // action type
-            );
-        }
-    }
-
-    $_SESSION['promotion_result'] = "🎉 Selected non-members have been successfully promoted to Members!";
-    header("Location: promotion_panel.php");
-    exit();
-}
-
 // Fetch eligible for promotion (non-members only)
 $eligible = $mysqli->query("
     SELECT id, user_code, firstname, lastname, email, contact, attendances_count
@@ -148,7 +86,8 @@ $leaders = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY l
                 <?php unset($_SESSION['promotion_result']); ?>
             <?php endif; ?>
 
-            <form action="" method="POST">
+            <!-- ✅ FIXED: Form now submits to promote_nonmembers.php -->
+            <form action="promote_nonmembers.php" method="POST">
                 <table>
                     <thead>
                         <tr>

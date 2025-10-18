@@ -2,22 +2,27 @@
 /**
  * ============================================================================
  *  Unity Christian Fellowship - Centralized Logging System Helper
- *  File: functions/log_helper.php
- *  Purpose: Provides universal system logging for all modules
+ *  File: includes/log_helper.php
+ *  Purpose: Provides universal system logging for all modules and user types
  * ============================================================================
  */
 
 /**
  * Core Logging Function
  * ----------------------------------------------------------------------------
- * Records any major user action to `system_logs` for transparency and audit.
+ * Records any significant user/system action into `system_logs`
+ * for audit, transparency, and accountability.
  *
- * @param mysqli $mysqli          Database connection
- * @param int|null $user_id       ID of acting user (nullable for system events)
- * @param string|null $user_role  Role of the user performing the action
- * @param string $action_type     Short identifier (ADD, EDIT, DELETE, LOGIN, etc.)
- * @param string $description     Detailed description of the action
- * @param string $importance      'Normal', 'High', or 'Critical'
+ * Table Requirement:
+ *   - system_logs.user_id (nullable)
+ *   - system_logs.account_type ENUM('User','Non-member','System')
+ *
+ * @param mysqli $mysqli          Active database connection
+ * @param int|null $user_id       User or Non-member ID (nullable for system)
+ * @param string|null $user_role  The role or type of actor (Admin, Non-member, etc.)
+ * @param string $action_type     Short action keyword (ADD, EDIT, LOGIN, etc.)
+ * @param string $description     Details of the action performed
+ * @param string $importance      One of: 'Low', 'Normal', 'High', 'Critical'
  */
 function log_action($mysqli, $user_id, $user_role, $action_type, $description, $importance = 'Normal')
 {
@@ -26,6 +31,15 @@ function log_action($mysqli, $user_id, $user_role, $action_type, $description, $
         return;
     }
 
+    // --- Auto-detect account type based on role ---
+    $account_type = 'User';
+    if (strtolower($user_role) === 'non-member') {
+        $account_type = 'Non-member';
+    } elseif (strtolower($user_role) === 'system') {
+        $account_type = 'System';
+    }
+
+    // --- Sanitize Inputs ---
     $user_id = $user_id ?? null;
     $user_role = htmlspecialchars($user_role ?? 'System', ENT_QUOTES, 'UTF-8');
     $action_type = strtoupper(trim($action_type));
@@ -33,12 +47,13 @@ function log_action($mysqli, $user_id, $user_role, $action_type, $description, $
     $importance = ucfirst(strtolower($importance));
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
+    // --- Insert Log ---
     $stmt = $mysqli->prepare("
-        INSERT INTO system_logs (user_id, user_role, action_type, action_description, ip_address, importance)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO system_logs (user_id, account_type, user_role, action_type, action_description, ip_address, importance)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
     if ($stmt) {
-        $stmt->bind_param("isssss", $user_id, $user_role, $action_type, $description, $ip, $importance);
+        $stmt->bind_param("issssss", $user_id, $account_type, $user_role, $action_type, $description, $ip, $importance);
         $stmt->execute();
         $stmt->close();
     } else {
@@ -49,27 +64,36 @@ function log_action($mysqli, $user_id, $user_role, $action_type, $description, $
 /**
  * Log Login Event
  * ----------------------------------------------------------------------------
- * Automatically called after a successful login or logout.
+ * Called after a successful login or logout attempt.
  *
  * @param mysqli $mysqli
- * @param int $user_id
- * @param string $role
- * @param bool $is_login   true = login, false = logout
+ * @param int|null $user_id   User or Non-member ID
+ * @param string $role        Role of the user (Admin, Non-member, etc.)
+ * @param bool $is_login      true = login, false = logout
  */
 function log_login_event($mysqli, $user_id, $role, $is_login = true)
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
     $action = $is_login ? 'LOGIN' : 'LOGOUT';
-    $desc = $is_login
-        ? "User (ID: $user_id) logged in from IP: $ip."
-        : "User (ID: $user_id) logged out.";
+
+    // Flexible description for both Users and Non-members
+    if ($is_login) {
+        $desc = ($role === 'Non-member')
+            ? "Non-member (ID: $user_id) logged in from IP: $ip."
+            : "User (ID: $user_id) logged in from IP: $ip.";
+    } else {
+        $desc = ($role === 'Non-member')
+            ? "Non-member (ID: $user_id) logged out."
+            : "User (ID: $user_id) logged out.";
+    }
+
     log_action($mysqli, $user_id, $role, $action, $desc, 'Normal');
 }
 
 /**
  * Log Failed Login Attempt
  * ----------------------------------------------------------------------------
- * Useful for security auditing. Does not require a session.
+ * For authentication errors or brute-force detection.
  *
  * @param mysqli $mysqli
  * @param string $email
@@ -84,7 +108,7 @@ function log_failed_login($mysqli, $email)
 /**
  * Log System Event
  * ----------------------------------------------------------------------------
- * For automated tasks like backups, cron jobs, migrations, etc.
+ * For automation, backups, cron jobs, and other background tasks.
  *
  * @param mysqli $mysqli
  * @param string $description
@@ -98,18 +122,18 @@ function log_system_event($mysqli, $description, $importance = 'Normal')
 /**
  * Log Role Change
  * ----------------------------------------------------------------------------
- * Specifically logs promotions, demotions, and reactivations.
+ * Specifically for promotions, demotions, and leader assignments.
  *
  * @param mysqli $mysqli
- * @param int $admin_id
- * @param string $admin_role
- * @param string $target_user
- * @param string $new_role
- * @param string $action
+ * @param int $admin_id          Acting admin ID
+ * @param string $admin_role     Acting admin role (Admin, Pastor, etc.)
+ * @param string $target_user    Full name of the user affected
+ * @param string $new_role       New assigned role
+ * @param string $action         Action label (PROMOTE, DEMOTE, etc.)
  */
 function log_role_change($mysqli, $admin_id, $admin_role, $target_user, $new_role, $action = 'CHANGE')
 {
-    $desc = "$admin_role changed the role of $target_user to $new_role.";
-    log_action($mysqli, $admin_id, $admin_role, strtoupper($action), $desc, 'High');
+    $desc = "$admin_role performed $action: $target_user → $new_role.";
+    log_action($mysqli, $admin_id, $admin_role, 'ROLE_CHANGE', $desc, 'High');
 }
 ?>
