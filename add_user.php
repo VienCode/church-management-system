@@ -85,21 +85,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     );
 
     if ($stmt->execute()) {
-        // ✅ If the user is a Leader, insert into leaders table
-        if ($role_id == 2) {
-            $leader_name = $firstname . ' ' . $lastname;
-            $checkLeader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE leader_name = ?");
-            $checkLeader->bind_param("s", $leader_name);
-            $checkLeader->execute();
-            $existsLeader = $checkLeader->get_result()->num_rows > 0;
+        // ✅ If the user is a Leader, ensure a matching entry exists in the leaders table
+            if ($role_id == 2) {
+                $leader_name = $firstname . ' ' . $lastname;
 
-            if (!$existsLeader) {
-                $insertLeader = $mysqli->prepare("INSERT INTO leaders (leader_name, created_at) VALUES (?, NOW())");
-                $insertLeader->bind_param("s", $leader_name);
-                $insertLeader->execute();
+                // Check for existing record by name or email
+                $checkLeader = $mysqli->prepare("SELECT leader_id FROM leaders WHERE leader_name = ? OR email = ?");
+                $checkLeader->bind_param("ss", $leader_name, $email);
+                $checkLeader->execute();
+                $existsLeader = $checkLeader->get_result()->num_rows > 0;
+                $checkLeader->close();
+
+                if (!$existsLeader) {
+                    $insertLeader = $mysqli->prepare("
+                        INSERT INTO leaders (leader_name, contact, email, created_at)
+                        VALUES (?, ?, ?, NOW())
+                    ");
+                    $insertLeader->bind_param("sss", $leader_name, $contact, $email);
+                    $insertLeader->execute();
+                    $insertLeader->close();
+                }
             }
-        }
-
+                
         $_SESSION['msg'] = "✅ User added successfully with ID: $user_code";
         header("Location: admin_dashboard.php");
         exit;

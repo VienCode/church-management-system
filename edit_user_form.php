@@ -32,10 +32,10 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Edit User - Admin</title>
+    <title>Edit User</title>
     <link rel="stylesheet" href="styles_system.css">
     <style>
-        /* --- Form Styling --- */
+        /* --- Unified Form Styling (matches Add User Form) --- */
         .form-container {
             background: white;
             padding: 30px;
@@ -132,37 +132,46 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
             font-size: 14px;
             margin-bottom: 15px;
         }
+
+        .msg {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .msg.success {
+            background: #e6f9ec;
+            color: #1a7f37;
+            border: 1px solid #9ae2af;
+        }
+
+        .msg.error {
+            background: #fdecea;
+            color: #b3261e;
+            border: 1px solid #f5c2c0;
+        }
     </style>
 </head>
 <body>
 <div class="main-layout">
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="logo-section">
-            <div class="logo-placeholder"><span>⛪</span></div>
-            <div class="logo">Unity Christian Fellowship</div>
-        </div>
-        <ul class="nav-menu">
-            <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
-            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="members.php"><span>👤</span> Members</a></li>
-            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
-            <li><a href="donations.php"><span>💰</span> Donations</a></li>
+    <?php include 'includes/sidebar.php'; ?>
 
-            <li class="nav-divider"></li>
-            <li class="nav-section">🧩 System</li>
-            <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="logout.php"><span>🚪</span> Logout</a></li>
-        </ul>
-    </nav>
-
-    <!-- Content -->
     <div class="content-area">
         <div class="content-header">
             <h1 class="page-title">✏️ Edit User</h1>
-            <p class="note">Modify the fields below to update this user’s details.</p>
+            <p class="note">
+                Modify the details below to update this user’s information.  
+                <strong>Important:</strong> Changing a user’s role will automatically update their User Code prefix (e.g. M → L).
+            </p>
         </div>
+
+        <?php if (isset($_SESSION['msg'])): ?>
+            <div class="msg <?= str_starts_with($_SESSION['msg'], '✅') ? 'success' : 'error' ?>">
+                <?= htmlspecialchars($_SESSION['msg']) ?>
+            </div>
+            <?php unset($_SESSION['msg']); ?>
+        <?php endif; ?>
 
         <div class="form-container">
             <form action="edit_user.php" method="POST">
@@ -201,10 +210,13 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                 </select>
 
                 <div id="leaderSelectContainer" style="display:<?= ($user['role_id'] == 3) ? 'block' : 'none' ?>; margin-top:15px;">
-                    <label>Select Leader (For Members Only)</label>
+                    <label>Select Leader (for Members only)</label>
                     <select name="leader_id">
                         <option value="" disabled>Select Leader</option>
-                        <?php while ($leader = $leaders_result->fetch_assoc()): ?>
+                        <?php
+                        $leaders_result2 = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORDER BY leader_name ASC");
+                        while ($leader = $leaders_result2->fetch_assoc()):
+                        ?>
                             <option value="<?= $leader['leader_id'] ?>" <?= ($user['leader_id'] == $leader['leader_id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($leader['leader_name']) ?>
                             </option>
@@ -216,7 +228,6 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                     <input type="checkbox" name="is_cell_member" value="1" <?= !empty($user['is_cell_member']) ? 'checked' : '' ?>>
                     Part of a Cell Group
                 </label>
-
 
                 <div class="form-buttons">
                     <button type="submit" class="primary-btn">💾 Update User</button>
