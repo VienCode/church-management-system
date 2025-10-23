@@ -1,14 +1,13 @@
 <?php
 include 'database.php';
 include 'auth_check.php';
-restrict_to_roles([ROLE_MEMBER, ROLE_ADMIN, ROLE_LEADER]); // Allow members & admins
+restrict_to_roles([ROLE_MEMBER, ROLE_ADMIN, ROLE_LEADER]); // Members, Leaders, Admins can view
 
-$user_code = $_SESSION['user_code'] ?? null;
 $user_id = $_SESSION['user_id'] ?? null;
 $fullname = trim(($_SESSION['firstname'] ?? '') . ' ' . ($_SESSION['lastname'] ?? ''));
 
-if (!$user_code) {
-    echo "<h2 style='text-align:center; color:red;'>❌ Session expired or missing user code.</h2>";
+if (!$user_id) {
+    echo "<h2 style='text-align:center; color:red;'>❌ Session expired or missing user session.</h2>";
     exit;
 }
 
@@ -16,22 +15,25 @@ if (!$user_code) {
    1️⃣ FIND WHICH CELL GROUP THE MEMBER BELONGS TO
 --------------------------------------------------- */
 $sql = "
-    SELECT cg.id AS group_id, cg.group_name, l.leader_name
+    SELECT 
+        cg.id AS group_id, 
+        cg.group_name, 
+        l.leader_name
     FROM cell_group_members m
     JOIN cell_groups cg ON m.cell_group_id = cg.id
     JOIN leaders l ON cg.leader_id = l.leader_id
-    WHERE m.user_code = ?
-    AND cg.status = 'active'
+    WHERE m.member_id = ?
+      AND cg.status = 'active'
     LIMIT 1
 ";
 $stmt = $mysqli->prepare($sql);
-$stmt->bind_param("s", $user_code);
+$stmt->bind_param("i", $user_id);
 $stmt->execute();
 $group = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$group) {
-    echo "<h2 style='text-align:center; color:#555;'>ℹ️ You are not assigned to any Cell Group yet. Please wait for your leader or admin to assign you.</h2>";
+    echo "<h2 style='text-align:center; color:#555; margin-top:50px;'>ℹ️ You are not assigned to any Cell Group yet.<br>Please wait for your leader or admin to assign you.</h2>";
     exit;
 }
 
@@ -40,7 +42,7 @@ $group_name = $group['group_name'];
 $leader_name = $group['leader_name'];
 
 /* ---------------------------------------------------
-   2️⃣ FETCH MEETINGS OF THIS CELL GROUP
+   FETCH MEETINGS OF THIS CELL GROUP
 --------------------------------------------------- */
 $meetings_stmt = $mysqli->prepare("
     SELECT id, title, description, meeting_date
@@ -54,16 +56,16 @@ $meetings = $meetings_stmt->get_result();
 $meetings_stmt->close();
 
 /* ---------------------------------------------------
-   3️⃣ FETCH ATTENDANCE STATUS FOR THIS MEMBER
+   FETCH ATTENDANCE STATUS FOR THIS MEMBER
 --------------------------------------------------- */
 $attendance = [];
 if ($meetings->num_rows > 0) {
     $att_stmt = $mysqli->prepare("
         SELECT meeting_id, status
         FROM cell_group_attendance
-        WHERE user_code = ?
+        WHERE member_id = ?
     ");
-    $att_stmt->bind_param("s", $user_code);
+    $att_stmt->bind_param("i", $user_id);
     $att_stmt->execute();
     $att_result = $att_stmt->get_result();
     while ($row = $att_result->fetch_assoc()) {
@@ -72,7 +74,6 @@ if ($meetings->num_rows > 0) {
     $att_stmt->close();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,7 +133,7 @@ th {
             <section style="margin-top:30px;">
                 <h2 class="section-title">📅 Meetings & Attendance</h2>
                 <?php if ($meetings->num_rows === 0): ?>
-                    <p>No meetings have been scheduled yet.</p>
+                    <p>No meetings have been scheduled yet for your cell group.</p>
                 <?php else: ?>
                     <table>
                         <thead>
@@ -144,9 +145,12 @@ th {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($meeting = $meetings->fetch_assoc()): 
+                            <?php while ($meeting = $meetings->fetch_assoc()):
                                 $status = $attendance[$meeting['id']] ?? 'Not Marked';
-                                $status_class = strtolower(str_replace(' ', '', $status));
+                                $status_class = 'notmarked';
+                                if ($status === 'Present') $status_class = 'present';
+                                elseif ($status === 'Absent') $status_class = 'absent';
+                                elseif ($status === 'Late') $status_class = 'late';
                             ?>
                             <tr>
                                 <td><?= htmlspecialchars(date('F j, Y', strtotime($meeting['meeting_date']))) ?></td>
