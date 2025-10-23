@@ -143,24 +143,7 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
 <body>
 <div class="main-layout">
     <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="logo-section">
-            <div class="logo-placeholder"><span>⛪</span></div>
-            <div class="logo">Unity Christian Fellowship</div>
-        </div>
-        <ul class="nav-menu">
-            <li><a href="dashboard.php"><span>🏠</span> Dashboard</a></li>
-            <li><a href="attendance.php"><span>👥</span> Attendance</a></li>
-            <li><a href="members.php"><span>👤</span> Members</a></li>
-            <li><a href="upload.php"><span>📢</span> Church Updates</a></li>
-            <li><a href="donations.php"><span>💰</span> Donations</a></li>
-            <li class="nav-divider"></li>
-            <li class="nav-section">🧩 System</li>
-            <li><a href="logs.php"><span>🗂️</span> Activity Logs</a></li>
-            <li><a href="admin_dashboard.php"><span>⚙️</span> Manage Users</a></li>
-            <li><a href="logout.php"><span>🚪</span> Logout</a></li>
-        </ul>
-    </nav>
+    <?php include 'includes/sidebar.php'; ?>
 
     <!-- Content -->
     <div class="content-area">
@@ -224,12 +207,6 @@ $leaders_result = $mysqli->query("SELECT leader_id, leader_name FROM leaders ORD
                         <?php endwhile; ?>
                     </select>
                 </div>
-
-                <label>
-                    <input type="checkbox" name="is_cell_member" value="1" <?= !empty($user['is_cell_member']) ? 'checked' : '' ?>>
-                    Part of a Cell Group
-                </label>
-
                 <div class="form-buttons">
                     <button type="submit" class="primary-btn">💾 Save User</button>
                     <a href="admin_dashboard.php" class="secondary-btn">⬅ Back</a>

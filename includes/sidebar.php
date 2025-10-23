@@ -41,7 +41,7 @@
 
             <!-- MEMBER ACCESS -->
             <?php if (can_access([ROLE_MEMBER]) && !is_role(ROLE_ADMIN)): ?>
-            <li><a href="member_cellgroup.php" class="<?= basename($_SERVER['PHP_SELF']) == 'member_cellgroup.php' ? 'active' : '' ?>"><span>✅</span> My Cell Group Attendance</a></li>
+            <li><a href="cell_group_member.php" class="<?= basename($_SERVER['PHP_SELF']) == 'cell_group_member.php' ? 'active' : '' ?>"><span>✅</span> My Cell Group Attendance</a></li>
             <?php endif; ?>
         <?php endif; ?>
 

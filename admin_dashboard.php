@@ -107,8 +107,8 @@ $result = $stmt->get_result();
                         $member_count = 0;
                         $real_leader_id = null;
 
+                        // If Leader, count their members
                         if ($role_id == 2) {
-                            // Count members under leader
                             $leader_check = $mysqli->prepare("
                                 SELECT l.leader_id, COUNT(m.member_id) AS members
                                 FROM leaders l
@@ -187,11 +187,39 @@ $result = $stmt->get_result();
                                             </form>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <form method="POST" action="assign_leader.php" style="display:inline;">
-                                            <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                            <button type="submit" class="secondary-btn" 
-                                                    style="flex:0 0 auto;padding:6px 10px;">⭐ Make Leader</button>
-                                        </form>
+                                        <?php
+                                        // ✅ Check if the user (member) already has a leader
+                                        $leader_info = null;
+                                        $leader_check = $mysqli->prepare("
+                                            SELECT l.leader_name, cg.group_name
+                                            FROM cell_group_members cgm
+                                            JOIN cell_groups cg ON cg.id = cgm.cell_group_id
+                                            JOIN leaders l ON cg.leader_id = l.leader_id
+                                            WHERE cgm.member_id = ?
+                                            LIMIT 1
+                                        ");
+                                        $leader_check->bind_param("i", $user_id);
+                                        $leader_check->execute();
+                                        $leader_info = $leader_check->get_result()->fetch_assoc();
+                                        $leader_check->close();
+                                        ?>
+
+                                        <?php if ($leader_info): ?>
+                                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                                <span style="color:#555; font-size:13px;">
+                                                    👑 Member of <strong><?= htmlspecialchars($leader_info['leader_name']) ?></strong>’s group
+                                                </span>
+                                                <span style="font-size:12px; color:#888;">
+                                                    (<?= htmlspecialchars($leader_info['group_name']) ?>)
+                                                </span>
+                                            </div>
+                                        <?php else: ?>
+                                            <form method="POST" action="assign_leader.php" style="display:inline;">
+                                                <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                                <button type="submit" class="secondary-btn" 
+                                                        style="flex:0 0 auto;padding:6px 10px;">⭐ Make Leader</button>
+                                            </form>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>

@@ -17,12 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'create_group') {
         $name = trim($_POST['group_name']);
         $leader_id = intval($_POST['leader_id']);
+
         if ($name !== '' && $leader_id) {
-            $stmt = $mysqli->prepare("INSERT INTO cell_groups (group_name, leader_id) VALUES (?, ?)");
-            $stmt->bind_param("si", $name, $leader_id);
-            $stmt->execute();
-            log_action($mysqli, $_SESSION['user_id'], 'Admin', 'CREATE_GROUP', "Created Cell Group '$name' with Leader ID $leader_id", 'High');
-            $message = "<div class='cellgroup-message success'>✅ Cell Group '$name' created successfully.</div>";
+            // Check if leader already has any group (active, inactive, or archived)
+            $check = $mysqli->prepare("SELECT id, status FROM cell_groups WHERE leader_id = ?");
+            $check->bind_param("i", $leader_id);
+            $check->execute();
+            $existing = $check->get_result()->fetch_assoc();
+            $check->close();
+
+            if ($existing) {
+                $message = "<div class='cellgroup-message info'>⚠️ This leader already has a group (Status: " . ucfirst($existing['status']) . "). Please reuse or restore that group instead of creating a duplicate.</div>";
+            } else {
+                $stmt = $mysqli->prepare("INSERT INTO cell_groups (group_name, leader_id) VALUES (?, ?)");
+                $stmt->bind_param("si", $name, $leader_id);
+                $stmt->execute();
+                log_action($mysqli, $_SESSION['user_id'], 'Admin', 'CREATE_GROUP', "Created Cell Group '$name' with Leader ID $leader_id", 'High');
+                $message = "<div class='cellgroup-message success'>✅ Cell Group '$name' created successfully.</div>";
+            }
         } else {
             $message = "<div class='cellgroup-message info'>⚠️ Please enter a name and select a leader.</div>";
         }
@@ -38,14 +50,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "<div class='cellgroup-message success'>✅ Group archived successfully.</div>";
     }
 
-    // RESTORE GROUP
+    // RESTORE GROUP (duplicate-safe)
     elseif ($action === 'restore_group') {
         $group_id = intval($_POST['group_id']);
-        $stmt = $mysqli->prepare("UPDATE cell_groups SET status='active', archived_at=NULL WHERE id=?");
-        $stmt->bind_param("i", $group_id);
-        $stmt->execute();
-        log_action($mysqli, $_SESSION['user_id'], 'Admin', 'RESTORE_GROUP', "Restored Cell Group ID #$group_id", 'Normal');
-        $message = "<div class='cellgroup-message success'>✅ Group restored successfully.</div>";
+
+        // Get the leader of this archived group
+        $find_leader = $mysqli->prepare("SELECT leader_id FROM cell_groups WHERE id = ?");
+        $find_leader->bind_param("i", $group_id);
+        $find_leader->execute();
+        $leader = $find_leader->get_result()->fetch_assoc();
+        $find_leader->close();
+
+        if ($leader) {
+            $leader_id = $leader['leader_id'];
+
+            // Check if this leader already has an active group
+            $check_active = $mysqli->prepare("
+                SELECT COUNT(*) AS cnt 
+                FROM cell_groups 
+                WHERE leader_id = ? AND status = 'active' AND id != ?
+            ");
+            $check_active->bind_param("ii", $leader_id, $group_id);
+            $check_active->execute();
+            $count = $check_active->get_result()->fetch_assoc()['cnt'];
+            $check_active->close();
+
+            if ($count > 0) {
+                // Prevent restore — leader already has another active group
+                $message = "<div class='cellgroup-message info'>⚠️ This leader already has an active Cell Group. Please archive it first before restoring another.</div>";
+            } else {
+                // Safe to restore
+                $stmt = $mysqli->prepare("UPDATE cell_groups SET status='active', archived_at=NULL WHERE id=?");
+                $stmt->bind_param("i", $group_id);
+                $stmt->execute();
+                log_action($mysqli, $_SESSION['user_id'], 'Admin', 'RESTORE_GROUP', "Restored Cell Group ID #$group_id", 'Normal');
+                $message = "<div class='cellgroup-message success'>✅ Group restored successfully.</div>";
+            }
+        } else {
+            $message = "<div class='cellgroup-message error'>❌ Leader not found for this group.</div>";
+        }
     }
 }
 

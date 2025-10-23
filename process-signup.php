@@ -116,7 +116,7 @@ if ($is_existing_member) {
         $new_member_id = $stmt->insert_id;
         $stmt->close();
 
-        // 🔹 Log registration
+        // ✅ Central log
         log_action(
             $mysqli,
             null,
@@ -126,20 +126,50 @@ if ($is_existing_member) {
             'Normal'
         );
 
-        // 🔹 Find or create leader’s cell group
+        // ✅ Find or reuse leader’s cell group
         if (!empty($leader_id)) {
-            $group_result = $mysqli->prepare("
-                SELECT id FROM cell_groups 
-                WHERE leader_id = ? AND status = 'active' 
+            $check_group = $mysqli->prepare("
+                SELECT id, status 
+                FROM cell_groups 
+                WHERE leader_id = ?
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'active' THEN 1
+                        WHEN status = 'inactive' THEN 2
+                        WHEN status = 'archived' THEN 3
+                    END
                 LIMIT 1
             ");
-            $group_result->bind_param("i", $leader_id);
-            $group_result->execute();
-            $group_data = $group_result->get_result()->fetch_assoc();
-            $group_result->close();
+            $check_group->bind_param("i", $leader_id);
+            $check_group->execute();
+            $group = $check_group->get_result()->fetch_assoc();
+            $check_group->close();
 
-            if (!$group_data) {
-                // If leader has no active group, create one
+            if ($group) {
+                $group_id = $group['id'];
+
+                // Reactivate if archived
+                if ($group['status'] === 'archived') {
+                    $reactivate = $mysqli->prepare("
+                        UPDATE cell_groups 
+                        SET status='active', archived_at=NULL 
+                        WHERE id=?
+                    ");
+                    $reactivate->bind_param("i", $group_id);
+                    $reactivate->execute();
+                    $reactivate->close();
+
+                    log_action(
+                        $mysqli,
+                        null,
+                        'System',
+                        'RESTORE_GROUP',
+                        "Automatically reactivated archived cell group ID #$group_id for Leader ID $leader_id",
+                        'Normal'
+                    );
+                }
+            } else {
+                // Create new group if none exists at all
                 $leader_name_query = $mysqli->prepare("SELECT leader_name FROM leaders WHERE leader_id = ?");
                 $leader_name_query->bind_param("i", $leader_id);
                 $leader_name_query->execute();
@@ -155,11 +185,18 @@ if ($is_existing_member) {
                 $create_group->execute();
                 $group_id = $create_group->insert_id;
                 $create_group->close();
-            } else {
-                $group_id = $group_data['id'];
+
+                log_action(
+                    $mysqli,
+                    null,
+                    'System',
+                    'CREATE_GROUP',
+                    "New cell group '$group_name' (ID #$group_id) auto-created for Leader ID $leader_id during member signup",
+                    'Normal'
+                );
             }
 
-            // 🔹 Add member to the leader’s group (by member_id)
+            // ✅ Add member to leader’s group
             $check_member = $mysqli->prepare("
                 SELECT id FROM cell_group_members 
                 WHERE cell_group_id = ? AND member_id = ?
@@ -177,6 +214,15 @@ if ($is_existing_member) {
                 $insert_member->bind_param("ii", $group_id, $new_member_id);
                 $insert_member->execute();
                 $insert_member->close();
+
+                log_action(
+                    $mysqli,
+                    null,
+                    'System',
+                    'ADD_MEMBER',
+                    "Added new member ID #$new_member_id to Cell Group #$group_id",
+                    'Normal'
+                );
             }
         }
 
@@ -190,7 +236,7 @@ if ($is_existing_member) {
     }
 
 } else {
-    // NEW ATTENDEE → non_members table
+    // === NON-MEMBER REGISTRATION ===
     $role_id = 4;
 
     do {
