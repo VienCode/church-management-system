@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "<div class='cellgroup-message success'>✅ Group archived successfully.</div>";
     }
 
-    // ✅ RESTORE GROUP
+    // RESTORE GROUP
     elseif ($action === 'restore_group') {
         $group_id = intval($_POST['group_id']);
         $stmt = $mysqli->prepare("UPDATE cell_groups SET status='active', archived_at=NULL WHERE id=?");
@@ -113,36 +113,31 @@ $leaders_without_groups = $leaders_query->fetch_all(MYSQLI_ASSOC);
           <td><?= htmlspecialchars($g['leader_name'] ?? 'N/A') ?></td>
           <td><?= ucfirst($g['status']) ?></td>
           <td><?= $g['member_count'] ?></td>
-            <td style="display:flex; gap:6px; flex-wrap: wrap;">
-            <!-- Archive / Restore toggle -->
-            <form method="POST" style="display:inline;">
-                <?php if ($g['status'] === 'archived'): ?>
-                <input type="hidden" name="action" value="restore_group">
-                <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                <button type="submit" class="primary-btn">Restore</button>
-                <?php else: ?>
-                <input type="hidden" name="action" value="archive_group">
-                <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                <button type="submit" class="secondary-btn">Archive</button>
-                <?php endif; ?>
-            </form>
-            <!-- Manage Members -->
-            <form method="GET" action="view_group_members.php" style="display:inline;">
-                <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                <button type="submit" class="primary-btn">View Members</button>
-            </form>
+          <td style="display:flex; gap:6px; flex-wrap: wrap;">
+              <!-- Archive / Restore toggle -->
+              <form method="POST" style="display:inline;">
+                  <?php if ($g['status'] === 'archived'): ?>
+                  <input type="hidden" name="action" value="restore_group">
+                  <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
+                  <button type="submit" class="primary-btn">Restore</button>
+                  <?php else: ?>
+                  <input type="hidden" name="action" value="archive_group">
+                  <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
+                  <button type="submit" class="secondary-btn">Archive</button>
+                  <?php endif; ?>
+              </form>
 
-            <!-- Manage Group (Dispersal / Undo) -->
-            <form method="GET" action="admin_cell_group_manage.php" style="display:inline;">
-                <input type="hidden" name="id" value="<?= $g['id'] ?>">
-                <button type="submit" class="secondary-btn">Manage</button>
-            </form>
-            </td>
-            <!-- Manage Button (goes to new page) -->
-            <form method="GET" action="admin_cell_group_manage.php" style="display:inline;">
-              <input type="hidden" name="id" value="<?= $g['id'] ?>">
-              <button type="submit" class="primary-btn">Manage</button>
-            </form>
+              <!-- View Members -->
+              <form method="GET" action="view_group_members.php" style="display:inline;">
+                  <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
+                  <button type="submit" class="primary-btn">View Members</button>
+              </form>
+
+              <!-- Manage Group -->
+              <form method="GET" action="admin_cell_group_manage.php" style="display:inline;">
+                  <input type="hidden" name="id" value="<?= $g['id'] ?>">
+                  <button type="submit" class="secondary-btn">Manage</button>
+              </form>
           </td>
         </tr>
         <?php endforeach; ?>

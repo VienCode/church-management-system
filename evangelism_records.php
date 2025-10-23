@@ -162,15 +162,6 @@ th {
                 <button type="submit" class="search-btn">🔍 Filter</button>
             </form>
 
-            <!-- Export Button -->
-            <form method="GET" action="export_evangelism_report.php">
-                <input type="hidden" name="search_name" value="<?= htmlspecialchars($search_name) ?>">
-                <input type="hidden" name="status" value="<?= htmlspecialchars($search_status) ?>">
-                <input type="hidden" name="start_date" value="<?= htmlspecialchars($search_start) ?>">
-                <input type="hidden" name="end_date" value="<?= htmlspecialchars($search_end) ?>">
-                <button type="submit" class="export-btn">📤 Export to Excel</button>
-            </form>
-
             <!-- Table -->
             <table>
                 <thead>

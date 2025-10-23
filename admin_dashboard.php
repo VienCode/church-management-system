@@ -132,39 +132,65 @@ $result = $stmt->get_result();
                             <td><?= htmlspecialchars($row['contact']) ?></td>
                             <td><?= ucfirst($row['role_name']) ?></td>
                             <td>
-                                <div style="display:flex; flex-wrap:wrap; gap:5px;">
-                                    <a href="edit_user_form.php?id=<?= $row['id'] ?>" class="edit-btn">✏️ Edit</a>
+                                <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; max-width: 400px;">
 
+                                    <!-- Edit Button -->
+                                    <a href="edit_user_form.php?id=<?= $row['id'] ?>" 
+                                    class="action-btn" 
+                                    style="background:linear-gradient(135deg,#3498db,#2980b9);color:white;padding:6px 12px;border-radius:6px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;">
+                                    ✏️ Edit
+                                    </a>
+
+                                    <!-- Delete Button -->
                                     <form method="POST" action="delete_user.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="delete-btn" onclick="return confirm('Delete this user?')">🗑️</button>
+                                        <button type="submit" class="delete-btn" 
+                                                style="padding:6px 10px;border-radius:6px;flex:0 0 auto;"
+                                                onclick="return confirm('Delete this user?')">🗑️</button>
                                     </form>
 
+                                    <!-- Reset Password -->
                                     <form method="POST" action="reset_password.php" style="display:inline;">
                                         <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="secondary-btn" title="Reset password to default">🔒</button>
+                                        <button type="submit" class="secondary-btn" 
+                                                title="Reset password to default" 
+                                                style="padding:6px 10px;flex:0 0 auto;">🔁</button>
                                     </form>
+
+                                    <!-- Edit Password -->
+                                    <a href="edit_password.php?id=<?= $row['id'] ?>" 
+                                    class="secondary-btn" 
+                                    title="Edit this user's password" 
+                                    style="padding:6px 10px;flex:0 0 auto;">🔐 Password</a>
 
                                     <?php if ($role_id == 2): ?>
                                         <?php if ($member_count > 0): ?>
-                                            <div style="display:flex; flex-direction:column; gap:3px;">
-                                                <span style="color:#dc2626; font-size:13px;">⚠️ <?= $member_count ?> members assigned</span>
+                                            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 150px;">
+                                                <span style="color:#dc2626; font-size:13px; white-space: nowrap;">⚠️ <?= $member_count ?> members assigned</span>
                                                 <?php if ($real_leader_id): ?>
-                                                    <a href="reassign_members.php?leader_id=<?= $real_leader_id ?>" class="primary-btn" style="font-size:13px;">🔁 Reassign Members</a>
+                                                    <a href="reassign_members.php?leader_id=<?= $real_leader_id ?>" 
+                                                    class="primary-btn" 
+                                                    style="font-size:13px;padding:4px 10px;min-width:150px;text-align:center;">
+                                                    🔁 Reassign Members
+                                                    </a>
                                                 <?php else: ?>
-                                                    <button disabled class="secondary-btn" style="opacity:0.6;">❌ Leader Missing</button>
+                                                    <button disabled class="secondary-btn" style="opacity:0.6;min-width:150px;">❌ Leader Missing</button>
                                                 <?php endif; ?>
                                             </div>
                                         <?php else: ?>
                                             <form method="POST" action="demote_leader.php" style="display:inline;">
                                                 <input type="hidden" name="user_id" value="<?= $user_id ?>">
-                                                <button type="submit" class="delete-btn" onclick="return confirm('Demote this leader back to Member?')">⬇️ Demote</button>
+                                                <button type="submit" 
+                                                        class="delete-btn" 
+                                                        style="flex:0 0 auto;padding:6px 10px;"
+                                                        onclick="return confirm('Demote this leader back to Member?')">⬇️ Demote</button>
                                             </form>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <form method="POST" action="assign_leader.php" style="display:inline;">
                                             <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                            <button type="submit" class="secondary-btn">⭐ Make Leader</button>
+                                            <button type="submit" class="secondary-btn" 
+                                                    style="flex:0 0 auto;padding:6px 10px;">⭐ Make Leader</button>
                                         </form>
                                     <?php endif; ?>
                                 </div>

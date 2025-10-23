@@ -28,6 +28,63 @@ if (isset($_SESSION['register_success'])) {
     <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&family=Signika:wght@300..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <title>Register</title>
+    <style>
+        /* Password Visibility Toggle */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .password-wrapper input {
+            width: 100%;
+            padding-right: 40px !important;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #555;
+        }
+        .toggle-password:hover {
+            color: #111;
+        }
+
+        /* Strength Meter */
+        .strength-meter {
+            height: 8px;
+            width: 100%;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 6px 0 10px;
+        }
+        .strength-meter-fill {
+            height: 100%;
+            width: 0%;
+            background: red;
+            border-radius: 4px;
+            transition: width 0.3s, background 0.3s;
+        }
+        .strength-text {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        /* Match Validation */
+        #matchText {
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        #matchText.match { color: #00cc66; }
+        #matchText.nomatch { color: #ff3333; }
+    </style>
 </head>
 <body class="register_body">
     <div class="topnav">
@@ -79,12 +136,27 @@ if (isset($_SESSION['register_success'])) {
                 <h5>*Input the desired information to use</h5>
                 <input required class="customInput" type="email" name="email" placeholder="Email*">
                 <br>
-                <h5>Password must be at least 8 characters long, with at least 1 letter or number.</h5>
-                <input required class="customInput" type="password" name="pwd" placeholder="Password*"> 
-                <input required class="customInput" type="password" name="confirm_pwd" placeholder="Confirm Password">
-                <br><br>
 
-                <button type="submit" name="submit" class="customButton">Submit</button>
+                <h5>Password must be at least 8 characters long, with at least 1 letter or number.</h5>
+
+                <!-- Password Field -->
+                <div class="password-wrapper">
+                    <input required class="customInput" type="password" name="pwd" id="pwd" placeholder="Password*">
+                    <button type="button" class="toggle-password" id="togglePwd" title="Show/Hide Password">👁️</button>
+                </div>
+
+                <div class="strength-meter"><div id="strength-fill" class="strength-meter-fill"></div></div>
+                <div id="strength-text" class="strength-text">Strength: Weak</div>
+
+                <!-- Confirm Password Field -->
+                <div class="password-wrapper">
+                    <input required class="customInput" type="password" name="confirm_pwd" id="confirm_pwd" placeholder="Confirm Password*">
+                    <button type="button" class="toggle-password" id="toggleConfirmPwd" title="Show/Hide Password">👁️</button>
+                </div>
+
+                <div id="matchText" class=""></div>
+
+                <br><button type="submit" name="submit" class="customButton">Submit</button>
             </form>
         </div>
     </div>
@@ -93,20 +165,72 @@ if (isset($_SESSION['register_success'])) {
     document.addEventListener("DOMContentLoaded", function () {
         const memberSelect = document.getElementById("is_existing_member");
         const leaderSelectContainer = document.getElementById("leaderSelectContainer");
+        const pwd = document.getElementById("pwd");
+        const confirmPwd = document.getElementById("confirm_pwd");
+        const matchText = document.getElementById("matchText");
+        const fill = document.getElementById("strength-fill");
+        const text = document.getElementById("strength-text");
+        const togglePwd = document.getElementById("togglePwd");
+        const toggleConfirmPwd = document.getElementById("toggleConfirmPwd");
 
+        // Member dropdown logic
         memberSelect.addEventListener("change", function () {
             leaderSelectContainer.style.display = (this.value === "yes") ? "block" : "none";
         });
 
-        function handleSelect(selectElement) {
-            if (!selectElement) return;
-            if (!selectElement.value) selectElement.style.color = "gray";
-            selectElement.addEventListener("change", function () {
-                this.style.color = this.value ? "black" : "gray";
-            });
+        // Password toggle buttons
+        function toggleVisibility(input, button) {
+            const isPassword = input.type === "password";
+            input.type = isPassword ? "text" : "password";
+            button.textContent = isPassword ? "🙈" : "👁️";
         }
-        handleSelect(document.getElementById("suffix"));
-        handleSelect(document.getElementById("leader_id"));
+        togglePwd.addEventListener("click", () => toggleVisibility(pwd, togglePwd));
+        toggleConfirmPwd.addEventListener("click", () => toggleVisibility(confirmPwd, toggleConfirmPwd));
+
+        // Password strength meter
+        pwd.addEventListener("input", function () {
+            const val = pwd.value;
+            let score = 0;
+            if (val.length >= 8) score++;
+            if (/[A-Z]/.test(val)) score++;
+            if (/[a-z]/.test(val)) score++;
+            if (/\d/.test(val)) score++;
+            if (/[@$!%*?&#^()_\-+=]/.test(val)) score++;
+
+            const percent = (score / 5) * 100;
+            fill.style.width = percent + "%";
+
+            if (score <= 2) {
+                fill.style.background = "red";
+                text.textContent = "Strength: Weak";
+            } else if (score === 3) {
+                fill.style.background = "orange";
+                text.textContent = "Strength: Moderate";
+            } else if (score === 4) {
+                fill.style.background = "#fbc02d";
+                text.textContent = "Strength: Strong";
+            } else {
+                fill.style.background = "green";
+                text.textContent = "Strength: Very Strong";
+            }
+        });
+
+        // Confirm password match validation
+        function checkMatch() {
+            if (confirmPwd.value === "") {
+                matchText.textContent = "";
+                return;
+            }
+            if (pwd.value === confirmPwd.value) {
+                matchText.textContent = "✅ Passwords match";
+                matchText.className = "match";
+            } else {
+                matchText.textContent = "❌ Passwords do not match";
+                matchText.className = "nomatch";
+            }
+        }
+        pwd.addEventListener("input", checkMatch);
+        confirmPwd.addEventListener("input", checkMatch);
     });
     </script>
 </body>

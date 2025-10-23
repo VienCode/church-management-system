@@ -74,6 +74,41 @@ $members_stmt->close();
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>📅 Cell Group History</title>
 <link rel="stylesheet" href="styles_system.css">
+<style>
+.details-row {
+    background-color: #f9fafb;
+    display: none;
+}
+.details-row td {
+    padding: 15px;
+    border-top: none;
+}
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+.details-table th, .details-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+.details-table th {
+    background: #e0e7ff;
+    font-weight: 600;
+}
+.toggle-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+.toggle-btn:hover { background: #2563eb; }
+</style>
 </head>
 <body>
 <div class="main-layout">
@@ -97,6 +132,7 @@ $members_stmt->close();
                             <th>Absent</th>
                             <th>Late</th>
                             <th>Total</th>
+                            <th>Details</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,6 +145,16 @@ $members_stmt->close();
                             <td style="color:#dc2626;"><?= $m['absent_count'] ?? 0 ?></td>
                             <td style="color:#facc15;"><?= $m['late_count'] ?? 0 ?></td>
                             <td><?= $m['total_records'] ?? 0 ?></td>
+                            <td>
+                                <button class="toggle-btn" data-meeting-id="<?= $m['id'] ?>">View Details</button>
+                            </td>
+                        </tr>
+                        <tr class="details-row" id="details-<?= $m['id'] ?>">
+                            <td colspan="8">
+                                <div id="content-<?= $m['id'] ?>" class="details-content">
+                                    <p>Loading attendance details...</p>
+                                </div>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -144,5 +190,31 @@ $members_stmt->close();
         </div>
     </div>
 </div>
+
+<script>
+// Toggle view for attendance details
+document.querySelectorAll('.toggle-btn').forEach(button => {
+    button.addEventListener('click', async function () {
+        const meetingId = this.dataset.meetingId;
+        const detailsRow = document.getElementById('details-' + meetingId);
+        const contentDiv = document.getElementById('content-' + meetingId);
+
+        if (detailsRow.style.display === 'table-row') {
+            detailsRow.style.display = 'none';
+            this.textContent = 'View Details';
+        } else {
+            detailsRow.style.display = 'table-row';
+            this.textContent = 'Hide Details';
+
+            // Fetch attendance details via AJAX
+            contentDiv.innerHTML = "<p>Loading attendance...</p>";
+
+            const response = await fetch(`fetch_meeting_attendance.php?meeting_id=${meetingId}`);
+            const data = await response.text();
+            contentDiv.innerHTML = data;
+        }
+    });
+});
+</script>
 </body>
 </html>
